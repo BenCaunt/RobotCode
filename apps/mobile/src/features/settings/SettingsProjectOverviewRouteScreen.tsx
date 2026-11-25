@@ -40,6 +40,7 @@ import { SettingsScreen } from "./components/SettingsScreen";
 import { SettingsSection } from "./components/SettingsSection";
 import { ListActionRow as SettingsActionRow } from "../../components/ui/ListActionRow";
 import { SettingsSwitchRow } from "./components/SettingsSwitchRow";
+import { ProjectRoboticsSection } from "./ProjectRoboticsSection";
 import { ProjectRepositoriesSection } from "./ProjectRepositoriesSection";
 import { useSettingsEnvironmentMenu } from "./components/SettingsEnvironmentFilterHeader";
 import { useSettingsEnvironmentFilter, type SettingsTarget } from "./settings-environment-filter";
@@ -458,6 +459,17 @@ function ProjectOverviewContent(props: {
           />
         );
       })}
+      {props.members.map((member) => (
+        <ProjectRoboticsSection
+          key={`${member.environmentId}:${member.id}`}
+          projectId={member.id}
+          environmentId={member.environmentId}
+          environmentLabel={
+            props.environments.find((entry) => entry.environmentId === member.environmentId)
+              ?.label ?? member.environmentId
+          }
+        />
+      ))}
       <SettingsSection
         title={gt("Danger", { $context: "section heading for destructive actions" })}
       >

@@ -71,6 +71,8 @@ import * as EnvironmentHandlers from "./toolkits/environment/handlers.ts";
 import { ThemeToolkit } from "./toolkits/theme/tools.ts";
 import * as ThemeHandlers from "./toolkits/theme/handlers.ts";
 import { ProjectToolkit } from "./toolkits/project/tools.ts";
+import { RoboticsToolkit } from "./toolkits/robotics/tools.ts";
+import * as RoboticsHandlers from "./toolkits/robotics/handlers.ts";
 import * as ProjectHandlers from "./toolkits/project/handlers.ts";
 import { AttachmentToolkit } from "./toolkits/attachment/tools.ts";
 import * as AttachmentHandlers from "./toolkits/attachment/handlers.ts";
@@ -1524,6 +1526,7 @@ export const layerTools = Layer.mergeAll(
   layerDeviceToolkit,
   layerHtmlToolkit,
   layerMessageToolkit,
+  toolkitRegistration(RoboticsToolkit, RoboticsHandlers.layer),
 );
 
 const layerToolExposure = Layer.effect(

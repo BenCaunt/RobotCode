@@ -206,6 +206,10 @@ import * as ServerSettings from "./serverSettings.ts";
 import { invalidateSettingsSecrets } from "./sourceControl/sourceControlHostSecrets.ts";
 import * as DatabaseStorage from "./persistence/DatabaseStorage.ts";
 import * as StorageCleanup from "./storageCleanup.ts";
+import * as ManagedJobs from "./robotics/managedJobs.ts";
+import * as RobotRegistry from "./robotics/RobotRegistry.ts";
+import * as RoboticsAnnotationService from "./robotics/RoboticsAnnotationService.ts";
+import { robotRegistryRpcError } from "./robotics/robotRegistryRpcError.ts";
 import * as TerminalManager from "./terminal/Manager.ts";
 import { makePrepareTerminalLaunch } from "./workspace/restoreMissingWorktree.ts";
 import { terminalOutputStream, withOutputWindow } from "./terminal/OutputProtocol.ts";
@@ -1564,6 +1568,9 @@ export const layerWsRpc = (
       const review = yield* ReviewService.ReviewService;
       const vcsProvisioning = yield* VcsProvisioningService.VcsProvisioningService;
       const vcsStatusBroadcaster = yield* VcsStatusBroadcaster.VcsStatusBroadcaster;
+      const managedJobs = yield* ManagedJobs.ManagedJobs;
+      const robotRegistry = yield* RobotRegistry.RobotRegistry;
+      const roboticsAnnotations = yield* RoboticsAnnotationService.RoboticsAnnotationService;
       const terminalManager = yield* TerminalManager.TerminalManager;
       const prepareTerminalLaunch = yield* makePrepareTerminalLaunch(
         threadManagement.getThreadShell,
@@ -3421,6 +3428,29 @@ export const layerWsRpc = (
         [WS_METHODS.reviewGetBranchCommits]: (input) => review.getBranchCommits(input),
         [WS_METHODS.reviewGetDiffPreview]: (input) => review.getDiffPreview(input),
         [WS_METHODS.reviewGetDiffFileContents]: (input) => review.getDiffFileContents(input),
+        [WS_METHODS.roboticsJobDefinitions]: managedJobs.definitions,
+        [WS_METHODS.roboticsJobList]: managedJobs.list,
+        [WS_METHODS.roboticsJobInspect]: managedJobs.inspect,
+        [WS_METHODS.roboticsJobEnsure]: ({ projectId, definitionId, idempotencyKey }) =>
+          managedJobs.ensure({ projectId, definitionId, idempotencyKey }),
+        [WS_METHODS.roboticsJobStart]: ({ projectId, definitionId, idempotencyKey }) =>
+          managedJobs.start({ projectId, definitionId, idempotencyKey }),
+        [WS_METHODS.roboticsJobStop]: managedJobs.stop,
+        [WS_METHODS.roboticsJobRestart]: managedJobs.restart,
+        [WS_METHODS.roboticsJobLogs]: managedJobs.logs,
+        [WS_METHODS.roboticsJobWatchLogs]: managedJobs.watchLogs,
+        [WS_METHODS.roboticsAnnotationCreate]: (input) =>
+          roboticsAnnotations.create(input, currentSession.sessionId),
+        [WS_METHODS.roboticsAnnotationGet]: roboticsAnnotations.get,
+        [WS_METHODS.roboticsAnnotationList]: roboticsAnnotations.list,
+        [WS_METHODS.roboticsRobotList]: (input) =>
+          robotRegistry.list(input).pipe(Effect.mapError(robotRegistryRpcError)),
+        [WS_METHODS.roboticsRobotInspect]: (input) =>
+          robotRegistry.inspect(input).pipe(Effect.mapError(robotRegistryRpcError)),
+        [WS_METHODS.roboticsRobotConnect]: (input) =>
+          robotRegistry.connect(input).pipe(Effect.mapError(robotRegistryRpcError)),
+        [WS_METHODS.roboticsRobotCancel]: (input) =>
+          robotRegistry.cancel(input).pipe(Effect.mapError(robotRegistryRpcError)),
         [WS_METHODS.terminalOpen]: (input) =>
           prepareTerminalLaunch(input).pipe(
             Effect.flatMap((launch) =>
@@ -3781,6 +3811,9 @@ export const WS_RPC_SERVER_OPTIONS = {
 export const layer = Layer.unwrap(
   Effect.gen(function* () {
     const serverBrowser = yield* ServerBrowser.ServerBrowser;
+    const managedJobs = yield* ManagedJobs.ManagedJobs;
+    const robotRegistry = yield* RobotRegistry.RobotRegistry;
+    const roboticsAnnotations = yield* RoboticsAnnotationService.RoboticsAnnotationService;
     const serverSelfUpdate = yield* ServerSelfUpdate.ServerSelfUpdate;
     const providerMaintenanceRunner = yield* ProviderMaintenanceRunner.ProviderMaintenanceRunner;
     const npmRelease = yield* NpmRelease.NpmRelease;
@@ -3874,6 +3907,16 @@ export const layer = Layer.unwrap(
               Layer.provide(DefectReporter.layer),
               Layer.provide(AcpRegistrySessions.layer),
               Layer.provide(Layer.succeed(SqlClient.SqlClient, sql)),
+              Layer.provide(
+                Layer.mergeAll(
+                  Layer.succeed(ManagedJobs.ManagedJobs, managedJobs),
+                  Layer.succeed(RobotRegistry.RobotRegistry, robotRegistry),
+                  Layer.succeed(
+                    RoboticsAnnotationService.RoboticsAnnotationService,
+                    roboticsAnnotations,
+                  ),
+                ),
+              ),
               // Installs outlive the connection that started them and lock across clients.
               Layer.provide(
                 Layer.succeed(

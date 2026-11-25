@@ -5,6 +5,7 @@ import {
   EnvironmentHttpApi,
 } from "@t3tools/contracts";
 import { isDevProxiedPath } from "@t3tools/shared/devProxy";
+import { isRerunRecordingPath } from "@t3tools/shared/filePreview";
 import {
   injectMcpAppCookieBootstrap,
   injectMcpAppDocumentBootstrap,
@@ -237,7 +238,10 @@ export const assetFileResponse = Effect.fn("assetFileResponse")(function* (
   const mediaFile = asset.file;
   const mediaInfo = mediaFile ? yield* statMediaFile(asset.path, mediaFile) : undefined;
   const isMedia = /^(?:audio|video)\//i.test(headers["Content-Type"] ?? "");
-  if (isMedia) {
+  const isRecording = isRerunRecordingPath(asset.path);
+  const streamWithoutCache = isMedia || isRecording;
+  if (isRecording) headers["Content-Type"] = "application/octet-stream";
+  if (streamWithoutCache) {
     // Without file identity, validators cannot guarantee byte equality; attachments must also expire with their URL.
     headers["Cache-Control"] = "private, no-store";
   }
@@ -272,7 +276,7 @@ export const assetFileResponse = Effect.fn("assetFileResponse")(function* (
       () => "application/octet-stream",
     );
     headers["Content-Length"] = String(size);
-    if (!isMedia) {
+    if (!streamWithoutCache) {
       headers["Last-Modified"] = mediaInfo.mtime.toUTCString();
       headers.ETag = `W/"${mediaInfo.size.toString(16)}-${mediaInfo.mtimeMs.toString(16)}"`;
     }

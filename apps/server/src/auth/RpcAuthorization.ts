@@ -216,6 +216,22 @@ export const RPC_REQUIRED_SCOPES = {
   [WS_METHODS.reviewGetBranchCommits]: AuthFilesystemReadScope,
   [WS_METHODS.reviewGetDiffPreview]: AuthFilesystemReadScope,
   [WS_METHODS.reviewGetDiffFileContents]: AuthFilesystemReadScope,
+  [WS_METHODS.roboticsJobDefinitions]: AuthTerminalReadScope,
+  [WS_METHODS.roboticsJobList]: AuthTerminalReadScope,
+  [WS_METHODS.roboticsJobInspect]: AuthTerminalReadScope,
+  [WS_METHODS.roboticsJobLogs]: AuthTerminalReadScope,
+  [WS_METHODS.roboticsJobWatchLogs]: AuthTerminalReadScope,
+  [WS_METHODS.roboticsJobEnsure]: AuthTerminalOperateScope,
+  [WS_METHODS.roboticsJobStart]: AuthTerminalOperateScope,
+  [WS_METHODS.roboticsJobStop]: AuthTerminalOperateScope,
+  [WS_METHODS.roboticsJobRestart]: AuthTerminalOperateScope,
+  [WS_METHODS.roboticsAnnotationCreate]: AuthOrchestrationOperateScope,
+  [WS_METHODS.roboticsAnnotationGet]: AuthFilesystemReadScope,
+  [WS_METHODS.roboticsAnnotationList]: AuthFilesystemReadScope,
+  [WS_METHODS.roboticsRobotList]: AuthOrchestrationReadScope,
+  [WS_METHODS.roboticsRobotInspect]: AuthOrchestrationReadScope,
+  [WS_METHODS.roboticsRobotConnect]: AuthTerminalOperateScope,
+  [WS_METHODS.roboticsRobotCancel]: AuthTerminalOperateScope,
   [WS_METHODS.terminalOpen]: AuthTerminalOperateScope,
   [WS_METHODS.terminalAttach]: AuthTerminalOperateScope,
   [WS_METHODS.terminalObserve]: AuthTerminalReadScope,
@@ -320,6 +336,9 @@ const requiredScopesForRpcCall = (
 ): ReadonlyArray<AuthEnvironmentScope> => {
   if (method === WS_METHODS.serverRetryResourceTelemetry) {
     return [AuthEnvironmentMaintainScope, AuthDiagnosticsReadScope];
+  }
+  if (method === WS_METHODS.roboticsAnnotationGet || method === WS_METHODS.roboticsAnnotationList) {
+    return [AuthFilesystemReadScope, AuthOrchestrationReadScope];
   }
   if (method === WS_METHODS.assetsCreateUrl) {
     const { resource } = decodeAssetCreateUrlInput(payload);

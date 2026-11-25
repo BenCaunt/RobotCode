@@ -93,6 +93,8 @@ describe("V2 preview upgrade", () => {
         [111, "SupersededRunAttemptIndex"],
         [112, "LayoutCommandApprovals"],
         [113, "WorkflowSkippedRuns"],
+        [114, "RoboticsEvidence"],
+        [115, "RobotTelemetryEvents"],
       ]);
       assert.deepStrictEqual(yield* runMigrations(), []);
       assert.deepStrictEqual(yield* sql`SELECT * FROM orchestration_v2_legacy_imports`, imports);
@@ -229,6 +231,8 @@ describe("V2 preview upgrade", () => {
         [111, "SupersededRunAttemptIndex"],
         [112, "LayoutCommandApprovals"],
         [113, "WorkflowSkippedRuns"],
+        [114, "RoboticsEvidence"],
+        [115, "RobotTelemetryEvents"],
       ]);
     }).pipe(Effect.provide(NodeSqliteClient.layer({ filename: ":memory:" }))),
   );

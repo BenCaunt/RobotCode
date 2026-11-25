@@ -391,7 +391,7 @@ describe("AssetAccess", () => {
     }).pipe(Effect.provide(layerTest)),
   );
 
-  it.effect("previews draft audio and video from relative workspace paths", () =>
+  it.effect("previews draft audio, video, and Rerun recordings with bounded range reads", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
@@ -399,6 +399,7 @@ describe("AssetAccess", () => {
       for (const [name, mimeType] of [
         ["video.mp4", "video/mp4"],
         ["audio.wav", "audio/wav"],
+        ["recording.rrd", "application/octet-stream"],
       ] as const) {
         const filePath = path.join(root, name);
         yield* fs.writeFileString(filePath, "media bytes");
@@ -422,6 +423,7 @@ describe("AssetAccess", () => {
           const response = HttpServerResponse.toWeb(yield* assetFileResponse(resolved, range));
           expect(response.status).toBe(status);
           expect(response.headers.get("content-type")).toBe(mimeType);
+          expect(response.headers.get("cache-control")).toBe("private, no-store");
           expect(response.headers.get("content-length")).toBe(String(body.length));
           if (range) expect(response.headers.get("content-range")).toBe("bytes 2-5/11");
           expect(yield* Effect.promise(() => response.text())).toBe(body);

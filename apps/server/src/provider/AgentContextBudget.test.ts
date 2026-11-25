@@ -33,6 +33,9 @@ import { PeerLinkRequests } from "../peer/PeerLinkRequests.ts";
 import { PeerLinks } from "../peer/PeerLinks.ts";
 import { RemoteDelegation } from "../peer/RemoteDelegation.ts";
 import { PreviewManager } from "../preview/Manager.ts";
+import { ManagedJobs } from "../robotics/managedJobs.ts";
+import { RobotRegistry } from "../robotics/RobotRegistry.ts";
+import { RoboticsAnnotationService } from "../robotics/RoboticsAnnotationService.ts";
 import { Workflows } from "../workflows/Workflows.ts";
 import { PreviewBrowser } from "../preview/PreviewBrowser.ts";
 import { ManagedProjectFolders } from "../project/ManagedProjectFolders.ts";
@@ -77,6 +80,9 @@ const toolHandlerServices = Layer.mergeAll(
   Layer.mock(PreviewBrowser)({}),
   Layer.mock(PreviewManager)({}),
   Layer.mock(Workflows)({}),
+  Layer.mock(ManagedJobs)({}),
+  Layer.mock(RobotRegistry)({}),
+  Layer.mock(RoboticsAnnotationService)({}),
   Layer.mock(ProjectCloneTracker)({}),
   Layer.mock(ProjectService)({}),
   Layer.mock(ProjectSetupScriptRunner)({}),
