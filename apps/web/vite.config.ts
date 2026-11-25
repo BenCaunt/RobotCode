@@ -344,6 +344,8 @@ export default defineConfig(({ command }) => {
       bundledDev ? bundledDevStableNamesPlugin() : undefined,
     ],
     optimizeDeps: {
+      // The viewer resolves its Wasm relative to its package module URL in dev.
+      exclude: ["@rerun-io/web-viewer"],
       include: [
         "@clerk/clerk-js",
         "@clerk/react/internal",

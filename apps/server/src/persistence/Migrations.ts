@@ -10,6 +10,12 @@ import {
   DATABASE_MIGRATIONS_STARTED_MESSAGE,
 } from "@t3tools/shared/databaseMigrationLog";
 import { reconcileV2PreviewMigration } from "./reconcileV2PreviewMigration.ts";
+import {
+  hasPendingRoboticsMigrations,
+  isLegacyRoboticsMigration,
+  reconcileLegacyRoboticsMigrations,
+  runRoboticsMigrations,
+} from "./RoboticsMigrations.ts";
 
 import Migration0001 from "./Migrations/001_OrchestrationEvents.ts";
 import Migration0002 from "./Migrations/002_OrchestrationCommandReceipts.ts";
@@ -265,8 +271,14 @@ export function skippedV2Migrations(
   recorded: ReadonlyArray<{ readonly id: number; readonly name: string }>,
   throughId?: number,
 ): string[] {
-  const latestRecordedId = Math.max(0, ...recorded.map((row) => row.id));
-  const recordedNames = new Map(recorded.map((row) => [row.id, row.name]));
+  const hasLegacyRoboticsEvidence = recorded.some(
+    (row) => row.id === 114 && isLegacyRoboticsMigration(row),
+  );
+  const upstreamHistory = hasLegacyRoboticsEvidence
+    ? recorded.filter((row) => !isLegacyRoboticsMigration(row))
+    : recorded;
+  const latestRecordedId = Math.max(0, ...upstreamHistory.map((row) => row.id));
+  const recordedNames = new Map(upstreamHistory.map((row) => [row.id, row.name]));
   return migrationManifest.flatMap(([id, name]) => {
     if (
       id < FIRST_V2_MIGRATION_ID ||
@@ -287,17 +299,15 @@ const assertV2MigrationsCanRun = Effect.fn("assertV2MigrationsCanRun")(function*
   const tables = yield* sql`
     SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'effect_sql_migrations'
   `;
-  if (tables.length === 0) return;
+  if (tables.length === 0) return false;
   const recorded = yield* sql<{
     readonly migration_id: number;
     readonly name: string;
   }>`SELECT migration_id, name FROM effect_sql_migrations`;
-  const skipped = skippedV2Migrations(
-    recorded.map((row) => ({ id: row.migration_id, name: row.name })),
-    throughId,
-  );
+  const history = recorded.map((row) => ({ id: row.migration_id, name: row.name }));
+  const skipped = skippedV2Migrations(history, throughId);
   const latestRecordedId = Math.max(0, ...recorded.map((row) => row.migration_id));
-  if (skipped.length === 0) return;
+  if (skipped.length === 0) return history.some(isLegacyRoboticsMigration);
   return yield* new Migrator.MigrationError({
     kind: "BadState",
     message: `This database's migration history would skip required schema migrations: ${skipped.join(", ")}. The migrator skips every id up to the highest recorded id (${latestRecordedId}), regardless of name. It was probably written by a different build. Start the build that wrote it, or report this migration history so an upgrade path can be added.`,
@@ -320,7 +330,11 @@ export const hasPendingMigrations = Effect.fn("hasPendingMigrations")(function* 
     FROM effect_sql_migrations
   `;
   const row = rows[0];
-  return (row?.latestId ?? 0) < latestMigrationId || (row?.previewRows ?? 0) > 0;
+  return (
+    (row?.latestId ?? 0) < latestMigrationId ||
+    (row?.previewRows ?? 0) > 0 ||
+    (yield* hasPendingRoboticsMigrations())
+  );
 });
 
 const run = Migrator.make({});
@@ -340,8 +354,9 @@ export const runMigrations = Effect.fn("runMigrations")(function* ({
     toMigrationInclusive === undefined || toMigrationInclusive >= FIRST_V2_MIGRATION_ID;
   // The reconcile takes the write lock; CLI startup must not contend with the server for a no-op.
   const previewMigrations = includesV2 && hasPending ? yield* reconcileV2PreviewMigration() : [];
-  if (includesV2) {
-    yield* assertV2MigrationsCanRun(toMigrationInclusive);
+  const hasLegacyRobotics = includesV2 && (yield* assertV2MigrationsCanRun(toMigrationInclusive));
+  if (hasLegacyRobotics && (toMigrationInclusive === undefined || toMigrationInclusive >= 114)) {
+    yield* reconcileLegacyRoboticsMigrations();
   }
   const sql = yield* SqlClient.SqlClient;
   const ledger = yield* sql`
@@ -361,7 +376,7 @@ export const runMigrations = Effect.fn("runMigrations")(function* ({
   // One transaction per migration: an index build on a large database can take minutes, and a
   // restart then resumes after the last finished migration instead of rolling all of them back.
   const executedMigrations: Array<readonly [id: number, name: string]> = [...previewMigrations];
-  yield* Effect.gen(function* () {
+  const roboticsMigrations = yield* Effect.gen(function* () {
     for (const [index, [id, name]] of pending.entries()) {
       if (Option.isSome(progress)) {
         yield* Ref.set(progress.value.current, { current: index + 1, total: pending.length });
@@ -378,10 +393,14 @@ export const runMigrations = Effect.fn("runMigrations")(function* ({
       }
       executedMigrations.push(...(yield* run({ loader: makeMigrationLoader(id) })));
     }
+    return toMigrationInclusive === undefined && hasPending ? yield* runRoboticsMigrations() : [];
   }).pipe(
     Effect.ensuring(Option.isSome(progress) ? Ref.set(progress.value.current, null) : Effect.void),
   );
-  const migrations = executedMigrations.map(([id, name]) => `${id}_${name}`);
+  const migrations = [
+    ...executedMigrations.map(([id, name]) => `${id}_${name}`),
+    ...roboticsMigrations.map(([id, name]) => `robotcode:${id}_${name}`),
+  ];
   yield* migrations.length === 0
     ? Effect.logDebug("Database schema is current")
     : Effect.log(DATABASE_MIGRATIONS_FINISHED_MESSAGE).pipe(Effect.annotateLogs({ migrations }));

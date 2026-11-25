@@ -20,6 +20,7 @@ import {
   isWorkspaceImagePreviewPath,
   isWorkspaceFontPreviewPath,
   isWorkspaceVideoPreviewPath,
+  isRerunRecordingPath,
   officePreviewKind,
   binaryPreviewKind,
 } from "@t3tools/shared/filePreview";
@@ -41,7 +42,8 @@ import {
 import { EditProvider, File, Virtualizer } from "@pierre/diffs/react";
 import { DiffWorkerPoolProvider } from "../DiffWorkerPoolProvider";
 import { useEditableAfterHighlight } from "./useEditableAfterHighlight";
-import { useFilesystemReadAccess } from "~/state/filesystem";
+import { filesystemEnvironment, useFilesystemReadAccess } from "~/state/filesystem";
+import { useEnvironmentQuery } from "~/state/query";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
@@ -125,6 +127,7 @@ import {
 } from "./fileSurfaceChrome";
 import SourceFilePreview from "./ReadOnlySourcePreview";
 import LargeFilePreview from "./LargeFilePreview";
+import { WorkspaceRerunPreview } from "./WorkspaceRerunPreview";
 import { FULL_TEXT_MAX_BYTES } from "./largeTextProtocol";
 import { resolveCenteredFileLineScrollTop } from "./fileLineReveal";
 import { DiffCommentAnnotation } from "../diffs/DiffCommentAnnotation";
@@ -1280,22 +1283,33 @@ export default function FilePreviewPanel({
   const isImage = relativePath !== null && !isVideo && isWorkspaceImagePreviewPath(relativePath);
   const isMedia = isImage || isVideo || isAudio;
   const isPdf = relativePath !== null && isPdfPreviewFile(relativePath);
+  const isRerun = relativePath !== null && isRerunRecordingPath(relativePath);
   const isDocument =
     relativePath !== null &&
-    (binaryPreviewKind({ name: relativePath }) !== null ||
+    (isRerun ||
+      binaryPreviewKind({ name: relativePath }) !== null ||
       officePreviewKind({ name: relativePath }) !== null ||
       isWorkspaceFontPreviewPath(relativePath));
   const isHtml = relativePath !== null && !isPdf && isBrowserPreviewFile(relativePath);
   const isHostFile =
     attachment !== undefined || (relativePath !== null && isHostPath(relativePath));
+  const resolvedFilePath =
+    relativePath && attachment === undefined ? resolvePathLinkTarget(relativePath, cwd) : null;
   const fileAccess = useFilesystemReadAccess(environmentId, m);
   const { canReadFiles } = fileAccess;
   const canWriteFiles = useEnvironmentScope(environmentId, AuthFilesystemWriteScope);
+  const recordingMetadata = useEnvironmentQuery(
+    canReadFiles && isRerun && resolvedFilePath !== null
+      ? filesystemEnvironment.getMetadata({ environmentId, input: { paths: [resolvedFilePath] } })
+      : null,
+    m,
+  );
+  const recordingKind = recordingMetadata.data?.entries[0]?.kind;
   const file = useProjectFileQuery(
     environmentId,
     cwd,
     relativePath,
-    attachment === undefined && relativePath !== null,
+    attachment === undefined && relativePath !== null && !isRerun,
     m,
   );
   const [fileRefreshRevision, setFileRefreshRevision] = useState(0);
@@ -1307,15 +1321,19 @@ export default function FilePreviewPanel({
   // Reset crumbs when a host trail reaches the workspace root and no longer passes through the current path.
   const breadcrumbTrail =
     breadcrumbPath === null ? null : retainedBreadcrumbTrail(folderTrail, breadcrumbPath);
+  const isKnownFolder = file.isNotFile || recordingKind === "directory";
+  const fileInspectionSettled = isRerun
+    ? recordingMetadata.data !== null || recordingMetadata.error !== null
+    : file.data !== null || file.error !== null;
   // A trail implies a folder before reads settle, preventing file-preview flashes while navigating up.
   const isFolder =
     attachment === undefined &&
-    (file.isNotFile || (folderTrail !== undefined && file.data === null && file.error === null));
+    (isKnownFolder || (folderTrail !== undefined && !fileInspectionSettled));
   const hostFolderPath = isFolder && isHostFile ? relativePath : null;
   // A chat-linked folder reads as a file until its read settles, and a trail only implies a folder.
   const fileManagerAction = fileManagerActionForPath({
-    isFolder: relativePath === null || file.isNotFile,
-    isSettled: file.data !== null || file.error !== null,
+    isFolder: relativePath === null || isKnownFolder,
+    isSettled: fileInspectionSettled,
     canReveal: serverConfig?.shellRevealInFileManager === true,
   });
   // Everything preview-related keys off previewPath; a folder has no preview.
@@ -1491,12 +1509,7 @@ export default function FilePreviewPanel({
         : crumbPath;
     onNavigateFolder(path, retainedBreadcrumbTrail(breadcrumbTrail ?? undefined, path), !isFolder);
   };
-  const absolutePath =
-    breadcrumbPath === ""
-      ? cwd
-      : relativePath && attachment === undefined
-        ? resolvePathLinkTarget(relativePath, cwd)
-        : null;
+  const absolutePath = breadcrumbPath === "" ? cwd : resolvedFilePath;
   const onFilePostRender = useFileLineReveal(relativePath, revealLine, revealRequestId);
   // Mounting the file read under the workspace mutation id refetches it after each mutation.
   useAtomMount(
@@ -1504,6 +1517,7 @@ export default function FilePreviewPanel({
       attachment === undefined &&
       relativePath !== null &&
       // Skip mutation reads for media and documents; folders still detect conversion to files.
+      !isRerun &&
       (isFolder || (!isMedia && !isPdf && !isDocument)) &&
       !selectedFilePending
       ? revisionedQuery(
@@ -1612,7 +1626,7 @@ export default function FilePreviewPanel({
               availableEditors={availableEditors}
               enableShortcut={openInShortcutEnabled}
               openInCwd={absolutePath}
-              openInCwdIsFile={file.isFile}
+              openInCwdIsFile={file.isFile || recordingKind === "file"}
               compact
               fileManagerAction={fileManagerAction}
             />
@@ -1742,6 +1756,16 @@ export default function FilePreviewPanel({
               workspaceRoot={cwd}
               name={relativePath}
               workspaceMutationId={workspaceMutationId}
+            />
+          ) : relativePath && isRerun && absolutePath ? (
+            <WorkspaceRerunPreview
+              key={`${environmentId}:${threadRef.threadId}:${absolutePath}`}
+              environmentId={environmentId}
+              projectId={projectId}
+              threadRef={threadRef}
+              draft={draft}
+              absolutePath={absolutePath}
+              workspaceRoot={cwd}
             />
           ) : relativePath && isAudio && absolutePath ? (
             <WorkspaceAudioPreview

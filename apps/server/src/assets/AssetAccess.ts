@@ -23,6 +23,7 @@ import {
   hostPreviewMimeTypeFromExtension,
   isWorkspaceAudioPreviewPath,
   isWorkspacePreviewEntryPath,
+  isRerunRecordingPath,
   isWorkspaceVideoPreviewPath,
   WORKSPACE_BROWSER_PREVIEW_EXTENSIONS,
 } from "@t3tools/shared/filePreview";
@@ -320,7 +321,7 @@ const resolveCanonicalFile = Effect.fn("AssetAccess.resolveCanonicalFile")(funct
   return (yield* isServerInternalPath(canonicalFile.value)) ? null : canonicalFile.value;
 });
 
-const resolveCanonicalWorkspaceFile = Effect.fn("AssetAccess.resolveCanonicalWorkspaceFile")(
+export const resolveCanonicalWorkspaceFile = Effect.fn("AssetAccess.resolveCanonicalWorkspaceFile")(
   function* (input: {
     readonly workspaceRoot: string;
     readonly relativePath: string;
@@ -520,7 +521,8 @@ const finalizeWorkspaceFileAsset = Effect.fn("AssetAccess.finalizeWorkspaceFileA
       input.resource._tag === "draft-workspace-file" &&
       (input.resource.disposition === "attachment" ||
         isWorkspaceAudioPreviewPath(resolved.relativePath) ||
-        isWorkspaceVideoPreviewPath(resolved.relativePath));
+        isWorkspaceVideoPreviewPath(resolved.relativePath) ||
+        isRerunRecordingPath(resolved.relativePath));
     if (!isDraftMedia && !isWorkspacePreviewEntryPath(resolved.relativePath)) {
       return yield* new AssetPreviewTypeValidationError({
         resource: input.resource,

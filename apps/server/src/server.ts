@@ -95,6 +95,10 @@ import * as SecretResolver from "./secrets/SecretResolver.ts";
 import * as ProviderInstanceRegistryHydration from "./provider/ProviderInstanceRegistryHydration.ts";
 import * as ProviderHostPathWatcher from "./provider/ProviderHostPathWatcher.ts";
 import * as ProjectSettingsOverrideSweep from "./provider/ProjectSettingsOverrideSweep.ts";
+import * as ManagedJobs from "./robotics/managedJobs.ts";
+import * as RobotRegistry from "./robotics/RobotRegistry.ts";
+import * as RoboticsAnnotationService from "./robotics/RoboticsAnnotationService.ts";
+import * as RoboticsEvidence from "./robotics/RoboticsEvidence.ts";
 import * as TerminalManager from "./terminal/Manager.ts";
 import * as McpHttpServer from "./mcp/McpHttpServer.ts";
 import * as PeerForwarding from "./peer/PeerForwarding.ts";
@@ -971,6 +975,8 @@ const layerMakeRoutes = Layer.mergeAll(
   Layer.provide(PreviewAutomationBroker.layer),
   Layer.provide(ServerSelfUpdate.layer.pipe(Layer.provide(layerDesktopAppUpdate))),
   Layer.provide(ProviderMaintenanceRunner.layer),
+  Layer.provide(RobotRegistry.layerManaged.pipe(Layer.provideMerge(ManagedJobs.layer))),
+  Layer.provide(RoboticsAnnotationService.layer.pipe(Layer.provide(RoboticsEvidence.layer))),
   Layer.provide(layerCommandReadiness),
   Layer.provide(ServerHttp.layerBrowserApiCors),
   Layer.provide(ServerHttp.layerHttpCompression),

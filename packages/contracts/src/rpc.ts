@@ -5,6 +5,7 @@ import {
   OrchestrationV2SearchThreadsInput,
   OrchestrationV2SearchThreadsResult,
 } from "./orchestrationV2.ts";
+import { ROBOTICS_WS_METHODS, roboticsRpcs } from "./roboticsRpc.ts";
 import { OrchestrationDispatchCommandError } from "./orchestrationDispatch.ts";
 import {
   McpAppCallToolInput,
@@ -487,6 +488,7 @@ import { VcsError } from "./vcs.ts";
 import { Project, ProjectMutation, ProjectMutationError } from "./project.ts";
 
 export const WS_METHODS = {
+  ...ROBOTICS_WS_METHODS,
   projectsListEntries: "projects.listEntries",
   projectsListIgnoredFiles: "projects.listIgnoredFiles",
   projectsReadFile: "projects.readFile",
@@ -2678,6 +2680,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsReviewGetBranchCommitsRpc,
   WsReviewGetDiffPreviewRpc,
   WsReviewGetDiffFileContentsRpc,
+  ...roboticsRpcs,
   WsTerminalOpenRpc,
   WsTerminalAttachRpc,
   WsTerminalObserveRpc,

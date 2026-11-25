@@ -234,6 +234,7 @@ export const make = Effect.gen(function* () {
       issueTrackerAccounts: true,
       sideChats: true,
       vcsBranchStatus: true,
+      robotics: true,
       inlineMessageContext: true,
       requiredWorktreeBootstrap: true,
       threadSettlement: true,

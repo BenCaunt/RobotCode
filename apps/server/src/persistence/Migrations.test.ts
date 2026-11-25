@@ -17,7 +17,9 @@ import {
 } from "@t3tools/shared/databaseMigrationLog";
 import * as DatabaseMigrationProgress from "./DatabaseMigrationProgress.ts";
 
-import { migrationManifest, runMigrations } from "./Migrations.ts";
+import { hasPendingMigrations, migrationManifest, runMigrations } from "./Migrations.ts";
+import RoboticsEvidence from "./RoboticsMigrations/001_RoboticsEvidence.ts";
+import RobotTelemetryEvents from "./RoboticsMigrations/002_RobotTelemetryEvents.ts";
 
 const v2Migrations = migrationManifest.filter(([id]) => id >= 55);
 const newerMigrationId = Math.max(...migrationManifest.map(([id]) => id)) + 1;
@@ -39,6 +41,60 @@ const v2TableCount = Effect.gen(function* () {
 });
 
 describe("runMigrations", () => {
+  it.effect.each([false, true])(
+    "upgrades the old robotics ledger while preserving data (telemetry applied: %s)",
+    (telemetryApplied) =>
+      Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient;
+        yield* runMigrations({ toMigrationInclusive: 113 });
+        yield* RoboticsEvidence;
+        yield* sql`
+          INSERT INTO effect_sql_migrations (migration_id, name, created_at)
+          VALUES (114, 'RoboticsEvidence', '2026-09-15 00:00:00')
+        `;
+        yield* sql`
+          INSERT INTO robotics_evidence_records
+          VALUES ('project', 'annotation', 'note', 'request', 'hash', 1, '{}')
+        `;
+        if (telemetryApplied) {
+          yield* RobotTelemetryEvents;
+          yield* sql`
+            INSERT INTO effect_sql_migrations (migration_id, name)
+            VALUES (115, 'RobotTelemetryEvents')
+          `;
+          yield* sql`INSERT INTO robotics_telemetry_events VALUES ('event', 'project', 42, '{}')`;
+        }
+
+        assert.isTrue(yield* hasPendingMigrations());
+        yield* runMigrations();
+        assert.isFalse(yield* hasPendingMigrations());
+        assert.deepStrictEqual(yield* runMigrations(), []);
+        assert.deepStrictEqual(yield* history, migrationManifest);
+        assert.deepStrictEqual(
+          yield* sql`SELECT migration_id, name FROM robotcode_sql_migrations ORDER BY migration_id`,
+          [
+            { migration_id: 1, name: "RoboticsEvidence" },
+            { migration_id: 2, name: "RobotTelemetryEvents" },
+          ],
+        );
+        assert.deepStrictEqual(
+          yield* sql`SELECT created_at FROM robotcode_sql_migrations WHERE migration_id = 1`,
+          [{ created_at: "2026-09-15 00:00:00" }],
+        );
+        assert.deepStrictEqual(yield* sql`SELECT id FROM robotics_evidence_records`, [
+          { id: "note" },
+        ]);
+        assert.deepStrictEqual(
+          yield* sql`SELECT event_id FROM robotics_telemetry_events`,
+          telemetryApplied ? [{ event_id: "event" }] : [],
+        );
+        assert.deepStrictEqual(
+          yield* sql`SELECT name FROM pragma_table_info('workflow_runs') WHERE name = 'tags_json'`,
+          [{ name: "tags_json" }],
+        );
+      }).pipe(Effect.provide(NodeSqliteClient.layer({ filename: ":memory:" }))),
+  );
+
   it.effect("refuses to start when another migration took a V2 id", () =>
     Effect.gen(function* () {
       const sql = yield* SqlClient.SqlClient;

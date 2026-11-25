@@ -3,6 +3,7 @@ import { GitPreparePullRequestThreadInput, GitRunStackedActionInput } from "./gi
 import {
   AuthAccessWriteScope,
   AuthEnvironmentMaintainScope,
+  AuthFilesystemReadScope,
   AuthOrchestrationOperateScope,
   AuthOrchestrationReadScope,
   AuthPreviewOperateScope,
@@ -23,6 +24,13 @@ export const CLIENT_GUARDED_RPC_SCOPES = {
   // An MCP sign-in stores a credential for the agent, as an account sign-in does.
   [WS_METHODS.providerMcpSignInStart]: AuthProvidersManageScope,
   [WS_METHODS.providerMcpSignInComplete]: AuthProvidersManageScope,
+  [WS_METHODS.roboticsJobEnsure]: AuthTerminalOperateScope,
+  [WS_METHODS.roboticsJobStart]: AuthTerminalOperateScope,
+  [WS_METHODS.roboticsJobStop]: AuthTerminalOperateScope,
+  [WS_METHODS.roboticsJobRestart]: AuthTerminalOperateScope,
+  [WS_METHODS.roboticsAnnotationCreate]: AuthOrchestrationOperateScope,
+  [WS_METHODS.roboticsRobotConnect]: AuthTerminalOperateScope,
+  [WS_METHODS.roboticsRobotCancel]: AuthTerminalOperateScope,
   [WS_METHODS.previewClose]: AuthPreviewOperateScope,
   // Stopping a server signals its processes, as closing a terminal does.
   [WS_METHODS.previewStopLocalServer]: AuthTerminalOperateScope,
@@ -133,6 +141,9 @@ export function clientRpcRequiredScopes(
   if (method === WS_METHODS.peerLinksPairLink && input !== undefined) {
     const held = mcpClientScopes(decodeLinkPairing(input).access);
     return [AuthAccessWriteScope, ...held];
+  }
+  if (method === WS_METHODS.roboticsAnnotationCreate) {
+    return [AuthOrchestrationOperateScope, AuthFilesystemReadScope];
   }
   if (method === WS_METHODS.guestShareCreate) {
     return [AuthAccessWriteScope, AuthOrchestrationReadScope];

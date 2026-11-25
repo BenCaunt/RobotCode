@@ -84,6 +84,28 @@ describe("RPC authorization scopes", () => {
     }
   });
 
+  it("uses terminal permissions to observe or operate managed processes", () => {
+    for (const method of [
+      WS_METHODS.roboticsJobDefinitions,
+      WS_METHODS.roboticsJobList,
+      WS_METHODS.roboticsJobInspect,
+      WS_METHODS.roboticsJobLogs,
+      WS_METHODS.roboticsJobWatchLogs,
+    ]) {
+      expect(requiredScopeForRpcMethod(method)).toBe(AuthTerminalReadScope);
+    }
+    for (const method of [
+      WS_METHODS.roboticsJobEnsure,
+      WS_METHODS.roboticsJobStart,
+      WS_METHODS.roboticsJobStop,
+      WS_METHODS.roboticsJobRestart,
+      WS_METHODS.roboticsRobotConnect,
+      WS_METHODS.roboticsRobotCancel,
+    ]) {
+      expect(requiredScopeForRpcMethod(method)).toBe(AuthTerminalOperateScope);
+    }
+  });
+
   it("lets thread readers observe and refresh checkout branches", () => {
     for (const method of [WS_METHODS.subscribeVcsBranch, WS_METHODS.vcsRefreshBranch]) {
       expect(requiredScopeForRpcMethod(method)).toBe(AuthOrchestrationReadScope);

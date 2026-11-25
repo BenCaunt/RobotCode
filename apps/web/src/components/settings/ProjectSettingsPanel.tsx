@@ -54,6 +54,7 @@ import {
 } from "./ProjectFaviconPickerDialog";
 import { ProjectActionsSettings } from "./ProjectActionsSettings";
 import { ProjectDefaultsSettings } from "./ProjectDefaultsSettings";
+import { ProjectRoboticsPanel } from "./ProjectRoboticsPanel";
 import { ProjectRepositoriesSettings } from "./ProjectRepositoriesSettings";
 import { ProjectWorktreeLayoutSettings } from "./ProjectWorktreeLayoutSettings";
 import {
@@ -695,6 +696,14 @@ function ProjectDetail({
         <ProjectDefaultsSettings category="project" />
         <ProjectActionsSettings />
         <ProjectRepositoriesSettings members={group.memberProjects} />
+        {group.memberProjects.map((member) => (
+          <ProjectRoboticsPanel
+            key={`${member.environmentId}:${member.id}`}
+            environmentId={member.environmentId}
+            projectId={member.id}
+            environmentLabel={member.environmentLabel ?? member.environmentId}
+          />
+        ))}
         <ProjectWorktreeLayoutSettings members={group.memberProjects} />
         {checkoutChoices}
         <SettingsSection title={gt("Danger")}>
