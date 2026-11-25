@@ -69,21 +69,19 @@ function RobotSessions({ environmentId, projectId }: Target) {
   async function run(robotId: string, action: "connect" | "cancel") {
     setPending(true);
     setError(null);
+    const reportError = (cause: unknown) =>
+      setError(errorDisplayMessage(cause, resolveMessage) ?? gt("Could not update robot session."));
     try {
       const response = await (action === "connect" ? connect : cancel)({
         environmentId,
         input: { projectId, robotId },
       });
-      if (response._tag === "Failure") {
-        setError(
-          errorDisplayMessage(squashAtomCommandFailure(response), resolveMessage) ??
-            gt("Could not update robot session."),
-        );
-      }
-      refresh();
-    } finally {
-      setPending(false);
+      if (response._tag === "Failure") reportError(squashAtomCommandFailure(response));
+    } catch (cause) {
+      reportError(cause);
     }
+    setPending(false);
+    refresh();
   }
 
   return (
@@ -174,6 +172,10 @@ function Processes({ environmentId, projectId }: Target) {
   async function run(action: "ensure" | "stop" | "restart", id: string) {
     setPending(true);
     setError(null);
+    const reportError = (cause: unknown) =>
+      setError(
+        errorDisplayMessage(cause, resolveMessage) ?? gt("Could not update managed process."),
+      );
     try {
       const response =
         action === "ensure"
@@ -187,17 +189,13 @@ function Processes({ environmentId, projectId }: Target) {
                 environmentId,
                 input: { projectId, jobId: id, idempotencyKey: randomUUID() },
               });
-      if (response._tag === "Failure") {
-        setError(
-          errorDisplayMessage(squashAtomCommandFailure(response), resolveMessage) ??
-            gt("Could not update managed process."),
-        );
-      }
-      if (before === null) refresh();
-      else setBefore(null);
-    } finally {
-      setPending(false);
+      if (response._tag === "Failure") reportError(squashAtomCommandFailure(response));
+    } catch (cause) {
+      reportError(cause);
     }
+    setPending(false);
+    if (before === null) refresh();
+    else setBefore(null);
   }
 
   const groups = new Map<string, RoboticsJob[]>();

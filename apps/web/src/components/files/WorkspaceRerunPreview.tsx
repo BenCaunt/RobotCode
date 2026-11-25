@@ -32,6 +32,7 @@ import {
 } from "./rerunAnnotation";
 
 const MAX_COMMENT_LENGTH = 4_000;
+const loadViewer = () => import("@rerun-io/web-viewer");
 const createAnnotation = createEnvironmentRpcCommand(connectionAtomRuntime, {
   label: "environment-data:robotics:annotation:create",
   tag: WS_METHODS.roboticsAnnotationCreate,
@@ -314,7 +315,7 @@ function RerunCanvas(props: {
     if (parent === null) return;
     let active = true;
     let stop: (() => void) | undefined;
-    void import("@rerun-io/web-viewer")
+    void loadViewer()
       .then(async ({ WebViewer }) => {
         if (!active) return;
         const viewer = new WebViewer();

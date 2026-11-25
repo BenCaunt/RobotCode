@@ -72,21 +72,20 @@ function RobotSessions({ environmentId, projectId }: Target) {
   async function run(robotId: string, action: "connect" | "cancel") {
     setPending(true);
     setError(null);
-    try {
-      const response = await (action === "connect" ? connect : cancel)({
-        environmentId,
-        input: { projectId, robotId },
-      });
-      if (response._tag === "Failure") {
-        setError(
-          errorDisplayMessage(squashAtomCommandFailure(response), resolveMessage) ??
-            gt("Could not update robot session."),
-        );
-      }
-      refresh();
-    } finally {
-      setPending(false);
-    }
+    const reportError = (cause: unknown) =>
+      setError(errorDisplayMessage(cause, resolveMessage) ?? gt("Could not update robot session."));
+    await Promise.resolve()
+      .then(() =>
+        (action === "connect" ? connect : cancel)({
+          environmentId,
+          input: { projectId, robotId },
+        }),
+      )
+      .then((response) => {
+        if (response._tag === "Failure") reportError(squashAtomCommandFailure(response));
+      }, reportError);
+    setPending(false);
+    refresh();
   }
 
   return (
@@ -166,30 +165,30 @@ function Processes({ environmentId, projectId }: Target) {
   async function run(action: "ensure" | "stop" | "restart", id: string) {
     setPending(true);
     setError(null);
-    try {
-      const response =
+    const reportError = (cause: unknown) =>
+      setError(
+        errorDisplayMessage(cause, resolveMessage) ?? gt("Could not update managed process."),
+      );
+    await Promise.resolve()
+      .then(() =>
         action === "ensure"
-          ? await ensure({
+          ? ensure({
               environmentId,
               input: { projectId, definitionId: id, idempotencyKey: uuidv4() },
             })
           : action === "stop"
-            ? await stop({ environmentId, input: { projectId, jobId: id } })
-            : await restart({
+            ? stop({ environmentId, input: { projectId, jobId: id } })
+            : restart({
                 environmentId,
                 input: { projectId, jobId: id, idempotencyKey: uuidv4() },
-              });
-      if (response._tag === "Failure") {
-        setError(
-          errorDisplayMessage(squashAtomCommandFailure(response), resolveMessage) ??
-            gt("Could not update managed process."),
-        );
-      }
-      if (before === null) refresh();
-      else setBefore(null);
-    } finally {
-      setPending(false);
-    }
+              }),
+      )
+      .then((response) => {
+        if (response._tag === "Failure") reportError(squashAtomCommandFailure(response));
+      }, reportError);
+    setPending(false);
+    if (before === null) refresh();
+    else setBefore(null);
   }
 
   const next = jobs._tag === "Success" ? jobs.value.nextBefore : null;
