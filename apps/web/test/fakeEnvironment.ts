@@ -17,6 +17,7 @@ import {
   RunId,
   RuntimeRequestId,
   ServerConfig,
+  type ServerConfigStreamEvent,
   ThreadId,
   TurnItemId,
   WS_METHODS,
@@ -452,6 +453,23 @@ const subscribe = <A>(first: ReadonlyArray<A>, register?: (queue: Queue.Queue<A>
     }),
   );
 
+const configSubscribers = new Set<Queue.Queue<ServerConfigStreamEvent>>();
+const configSnapshot = (): ServerConfigStreamEvent => ({
+  version: 1,
+  type: "snapshot",
+  config: serverConfig(),
+});
+const subscribeServerConfig = () =>
+  subscribe([configSnapshot()], (queue) => {
+    configSubscribers.add(queue);
+    return () => configSubscribers.delete(queue);
+  });
+
+function publishServerConfig() {
+  const snapshot = configSnapshot();
+  for (const queue of configSubscribers) Queue.offerUnsafe(queue, snapshot);
+}
+
 const handlers: Record<string, (input: never) => unknown> = {
   // Recorded, and accepted only when the scenario asks, since a pending command holds every
   // later command on its thread. Accepted commands' events never arrive.
@@ -552,8 +570,7 @@ const handlers: Record<string, (input: never) => unknown> = {
         if (vcsStatusSubscriber === queue) vcsStatusSubscriber = null;
       };
     }),
-  [WS_METHODS.subscribeServerConfig]: () =>
-    subscribe([{ version: 1 as const, type: "snapshot" as const, config: serverConfig() }]),
+  [WS_METHODS.subscribeServerConfig]: subscribeServerConfig,
 };
 
 // Unanswered calls stay pending, like a server that has not replied yet.
@@ -569,8 +586,7 @@ const client = new Proxy(handlers, {
 const session: EnvironmentConnectionLease["session"] = {
   client: client as unknown as WsRpcProtocolClient,
   initialConfig: Effect.sync(serverConfig),
-  subscribeServerConfig: () =>
-    subscribe([{ version: 1 as const, type: "snapshot" as const, config: serverConfig() }]),
+  subscribeServerConfig,
   ready: Effect.void,
   probe: Effect.void,
   inboundFrames: Effect.succeed(0),
@@ -624,6 +640,8 @@ export function installFakeEnvironment(
     ),
     keybindings: options?.keybindings ?? DEFAULT_RESOLVED_KEYBINDINGS,
   };
+  // The app can keep its config subscription alive between render scenarios.
+  publishServerConfig();
   dispatched = [];
   acceptCommands = options?.acceptCommands === true;
   projects = [
@@ -657,6 +675,7 @@ export function installFakeEnvironment(
       globalThis.fetch = realFetch;
       threads = [];
       baseServerConfig = makeServerConfig([CODEX_PROVIDER]);
+      publishServerConfig();
       dispatched = [];
       acceptCommands = false;
       projects = [project];

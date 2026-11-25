@@ -50,32 +50,31 @@ vi.mock("node:fs", async (importOriginal) => {
   return { ...actual, watch, realpath: Object.assign(actual.realpath.bind(undefined), { native }) };
 });
 
-it.live.each(["linked", "plain"] as const)(
+it.effect.each(["linked", "plain"] as const)(
   "backs off stopped watches for an unchanged %s directory",
   (kind) =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
-      const base = yield* fs.makeTempDirectoryScoped();
-      const entry = path.join(base, "linked");
-      const first = path.join(base, "first", "themes");
-      const second = path.join(base, "second", "themes");
-      yield* fs.makeDirectory(first, { recursive: true });
-      yield* fs.makeDirectory(second, { recursive: true });
-      if (kind === "linked" && !symlinksSupported) return;
-      yield* kind === "linked" ? fs.symlink(first, entry) : fs.makeDirectory(entry);
-      const firstIdentity = yield* fs.stat(first);
-      const secondIdentity = yield* fs.stat(second);
+      const firstIdentity = yield* fs.stat(yield* fs.makeTempDirectoryScoped());
+      const secondIdentity = yield* fs.stat(yield* fs.makeTempDirectoryScoped());
+      silent.root = path.resolve("/silent-watch", "backoff", kind);
+      silent.links.clear();
+      silent.missing.clear();
+      const entry = path.join(silent.root, "entry");
+      const target = path.join(silent.root, "target");
+      if (kind === "linked") silent.links.set(entry, target);
       let identity = firstIdentity;
       const events = yield* Queue.unbounded<"probe" | "refresh">();
 
-      // An ended child emits a final refresh, as it does when registration fails.
       yield* watchDirectoryPath(entry, Stream.succeed(undefined), Effect.succeed(false)).pipe(
         Stream.runForEach(() => Queue.offer(events, "refresh")),
         Effect.provideService(
           FileSystem.FileSystem,
           FileSystem.FileSystem.of({
             ...fs,
+            readLink: (file) =>
+              file === entry && kind === "linked" ? Effect.succeed(target) : fs.readLink(file),
             stat: (file) =>
               file === entry
                 ? Queue.offer(events, "probe").pipe(Effect.map(() => identity))
@@ -84,24 +83,16 @@ it.live.each(["linked", "plain"] as const)(
         ),
         Effect.forkScoped,
       );
-      assert.deepEqual(
-        yield* Queue.takeN(events, 10),
-        // Each acquire stats too: the first, a retry after 1 tick, then after 2 more.
-        [
-          "probe",
-          "probe",
-          "refresh",
-          "probe",
-          "probe",
-          "refresh",
-          "probe",
-          "probe",
-          "probe",
-          "refresh",
-        ],
-      );
+      assert.deepEqual(yield* Queue.takeN(events, 3), ["probe", "probe", "refresh"]);
+      yield* TestClock.adjust("1 second");
+      assert.deepEqual(yield* Queue.takeN(events, 3), ["probe", "probe", "refresh"]);
+      yield* TestClock.adjust("1 second");
+      assert.deepEqual(yield* Queue.takeAll(events), ["probe"]);
+      yield* TestClock.adjust("1 second");
+      assert.deepEqual(yield* Queue.takeN(events, 3), ["probe", "probe", "refresh"]);
 
       identity = secondIdentity;
+      yield* TestClock.adjust("1 second");
       assert.deepEqual(yield* Queue.takeN(events, 3), ["probe", "probe", "refresh"]);
     }).pipe(Effect.provide(NodeServices.layer)),
 );
