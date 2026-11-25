@@ -12,7 +12,7 @@ import * as Stream from "effect/Stream";
 import * as SecureRandom from "effect/crypto/SecureRandom";
 import * as TestClock from "effect/testing/TestClock";
 
-import RobotTelemetryEventsMigration from "../persistence/Migrations/115_RobotTelemetryEvents.ts";
+import RobotTelemetryEventsMigration from "../persistence/RoboticsMigrations/002_RobotTelemetryEvents.ts";
 import * as RobotTelemetry from "./RobotTelemetry.ts";
 import * as RobotTelemetryHooks from "./RobotTelemetryHooks.ts";
 
