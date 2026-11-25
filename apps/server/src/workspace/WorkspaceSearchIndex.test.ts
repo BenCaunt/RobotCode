@@ -332,6 +332,25 @@ it.live("answers content searches with git grep while a slow content index build
     yield* fileSystem.makeDirectory(path.join(cwd, "out/deep"), { recursive: true });
     yield* fileSystem.writeFileString(path.join(cwd, "out/deep/g.txt"), "needle\n");
 
+    const pcreProbe = yield* vcsProcess.run({
+      operation: "test.probeGitPcre",
+      command: "git",
+      args: ["-c", "submodule.recurse=false", "grep", "--untracked", "-P", "-e", "ne+dles?"],
+      cwd,
+      allowNonZeroExit: true,
+    });
+    const supportsPcre = !/USE_LIBPCRE|Perl-compatible/i.test(pcreProbe.stderr);
+    const grepProcess = VcsProcess.VcsProcess.of({
+      // These fixture patterns also work as EREs. Keep testing Git's record format on builds
+      // without PCRE. The rejected-PCRE and missing-ranges cases below inject their own failures.
+      run: (input) =>
+        vcsProcess.run(
+          supportsPcre || !input.args.includes("-P")
+            ? input
+            : { ...input, args: input.args.map((arg) => (arg === "-P" ? "-E" : arg)) },
+        ),
+    });
+
     let isWarmupComplete = false;
     const grep = vi.fn(async () => ({
       ok: true as const,
@@ -364,7 +383,9 @@ it.live("answers content searches with git grep while a slow content index build
       .mockReturnValueOnce({ ok: true, value: noPcreFinder })
       .mockReturnValueOnce({ ok: true, value: noPcreFinder });
 
-    const searchIndex = yield* WorkspaceSearchIndex.make(cwd, "content");
+    const searchIndex = yield* WorkspaceSearchIndex.make(cwd, "content").pipe(
+      Effect.provideService(VcsProcess.VcsProcess, grepProcess),
+    );
     const search = (input: Partial<Parameters<typeof searchIndex.searchContents>[0]>) =>
       searchIndex.searchContents({
         query: "needle",
@@ -445,7 +466,7 @@ it.live("answers content searches with git grep while a slow content index build
                     stdoutTruncated: output.exitCode === 0,
                     stderrTruncated: false,
                   })
-                : vcsProcess.run(input),
+                : grepProcess.run(input),
           }),
         ),
       );
