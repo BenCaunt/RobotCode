@@ -2,40 +2,44 @@
 
 <img align="right" src="./assets/prod/logo.svg" width="72" alt="Robot Code inspection robot" />
 
-Robot Code is an open-source workspace for building and debugging robot software with coding agents. Watch a robot move, pause a recording where its behavior changes, and give your agent the exact timestamp and entities to investigate.
+Robot Code is an open-source app for building and debugging robot software with a coding agent. You can watch a robot live or replay a recording. If the robot takes a wrong turn, pause there and ask your agent to look at that moment.
 
-![A Go2 field recording showing the estimated path, XY allowance, and front camera at the selected time](./.github/readme/field-map.webp)
+![Map of a Go2 robot’s walk, with a plot and a front camera image](./.github/readme/field-map.webp)
 
-The Go2 field map follows one walk. Scrub to a bend in the path to see the front camera frame available at that instant and how old it was. The example and its data run offline. [Build the recording tile](./docs/user/recording-tiles.md)
+Pick a bend in the path to see what the front camera saw. The map and camera share a timeline. You can try this recording offline. [Build the field map](./docs/user/recording-tiles.md)
 
 ## Run from source
 
-Install [Vite+](https://viteplus.dev/guide/), then run these commands from the checkout.
+Install [Vite+](https://viteplus.dev/guide/). Run these commands in the project folder.
 
 ```sh
 vp i
 vp run dev
 ```
 
-Open the pairing URL printed by the development server. For Electron, use `vp run dev:desktop`. The iOS and Android clients can connect to the same environment. [Mobile setup](./apps/mobile/README.md)
+Open the pairing link printed in your terminal. To run the desktop app, use `vp run dev:desktop`. You can also connect from an iPhone or Android device. [Mobile setup](./apps/mobile/README.md)
 
-## Watch a robot
+## Watch a robot live
 
-Open **Robotics** under a project and choose **Connect**. A registered robot can start an approved telemetry bridge and show its Rerun stream on web or desktop. In this Mini Pupper simulation, the trajectory sits beside commanded and measured speed. Pick a turn and follow the yaw rate, body tilt, and joint motion together. [Set up a live view or try the simulated arm](./docs/user/robotics-live-view.md)
+Open your project, choose **Robotics**, then **Connect**. If the robot has a live view, you can watch it in the web or desktop app.
 
-![Mini Pupper simulation with its trajectory and synchronized motion and servo plots](./.github/readme/live-view.webp)
+![Mini Pupper walking in a simulation, with plots of speed, tilt, and joint motion](./.github/readme/live-view.webp)
 
-## Investigate a run
+The blue line shows where Mini Pupper walked. The speed plot shows how fast it was told to go and how fast it went. [Set up a live view](./docs/user/robotics-live-view.md)
 
-Open **Evaluations → Experiment history** to follow a baseline and its subsequent runs. A result records the revision, setup, measurements, and fingerprints of its evidence. Open a replay citation to jump to a recorded decision. Here, three camera views show what the navigation policy saw, alongside its predicted map, requested step, and the evaluator’s collision map. [Publish and replay an evaluation](./docs/user/evaluations.md)
+## Review a run with your agent
 
-![A navigation replay paused at policy step seven with three camera views, model output, and the evaluator’s map](./.github/readme/decision-replay.webp)
+Open **Evaluations → Experiment history** to compare runs. Each report saves the code version, setup, and results. Follow a replay link to see what happened at a specific step. [Publish and replay a run](./docs/user/evaluations.md)
 
-To investigate with an agent, open a project `.rrd` file in a conversation, pause it, select the relevant entities, and choose **Annotate → Add to chat**. Your draft carries the observation and a reference to that version of the recording. [Annotate a recording](./docs/user/robotics-recordings.md)
+![Navigation replay at step seven, with three camera views and maps showing the robot’s next move](./.github/readme/decision-replay.webp)
+
+At step seven, you can see what the robot saw, where it tried to go, and which parts of the map the evaluator marked as blocked.
+
+To ask your agent about a moment, open a project recording (`.rrd`) in a chat. Pause it, select the parts you want to discuss, and choose **Annotate → Add to chat**. Your draft includes your note and a reference to that version of the recording. [Annotate a recording](./docs/user/robotics-recordings.md)
 
 ## Safety model
 
-**Connection and readiness.** An operator registers the robot on the environment host. **Connect** can start approved, non-actuating bridges. A passing probe means the robot met the configured readiness criterion. For a telemetry freshness guarantee, the probe itself must check sample age. [Register a robot and configure its probe](./docs/user/robotics-connections.md)
+**What does Ready mean?** An operator registers the robot on the computer running Robot Code. **Connect** can start approved programs that read robot data. **Ready** means the robot passed the operator’s check. If you need to know whether a sensor is sending fresh data, the check must look at the age of its last reading. [Set up a readiness check](./docs/user/robotics-connections.md)
 
 ```mermaid
 flowchart LR
@@ -46,10 +50,12 @@ flowchart LR
     ready <--> degraded
 ```
 
-**Managed processes.** The operator chooses each job’s executable, arguments, working directory, and resource claims on the host. The agent can inspect jobs and logs. Changing a session or job through the robotics tools requires a live project conversation with Full Access in Default mode. A claim reserves its resource among jobs on that environment. [Managed processes](./docs/user/robotics-processes.md)
+**What can an agent run?** The operator chooses each approved program, how it starts, and which resources it reserves. Two managed jobs on the same host cannot reserve the same resource at once. An agent can read job status and logs. To change a job or robot session with the robotics tools, it needs a live project chat with **Full Access** in **Default** mode. [Manage robot jobs](./docs/user/robotics-processes.md)
 
-**Physical command authority.** The robotics tools expose observation and process management. The repository includes a simulated command receiver to exercise exclusive writer leases, handoff, rejection of stale commands, and a watchdog that returns the receiver to its safe state when commands stop. Physical deployment requires enforcement at the robot’s command receiver, a robot-local watchdog, and an independent emergency stop. [Run the authority simulation](./docs/operations/robotics-authority.md)
+**What controls motion?** The robotics tools let an agent observe a robot and manage approved jobs. On a physical robot, the part that receives motion commands must check who can send them. The robot also needs its own watchdog to stop motion if commands stop arriving, and an emergency stop that works independently of Robot Code.
+
+You can try the command rules in a simulation. Only one sender has control at a time. When control passes to a new sender, the receiver rejects commands from the old one. [Run the safety simulation](./docs/operations/robotics-authority.md)
 
 ## License and credits
 
-Robot Code is an independent, unofficial fork of [T3 Code](https://github.com/pingdotgg/t3code). We thank the upstream contributors for the agent workspace this project builds on. T3 Tools, Inc. has no affiliation with Robot Code and does not maintain or endorse it. The Robot Code name and inspection robot identify this fork. [MIT License](./LICENSE) · [Trademark policy](./TRADEMARK.md)
+Robot Code is an independent, unofficial fork of [T3 Code](https://github.com/pingdotgg/t3code). We thank its contributors for the original coding workspace. T3 Tools, Inc. has no affiliation with Robot Code and does not maintain or endorse it. The Robot Code name and inspection robot identify this fork. [MIT License](./LICENSE) · [Trademark policy](./TRADEMARK.md)
