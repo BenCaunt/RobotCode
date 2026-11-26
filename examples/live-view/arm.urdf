@@ -1,0 +1,98 @@
+<?xml version="1.0"?>
+<robot name="sim_arm">
+  <material name="body"><color rgba="0.82 0.85 0.86 1"/></material>
+  <material name="accent"><color rgba="0.16 0.62 0.56 1"/></material>
+  <material name="dark"><color rgba="0.17 0.2 0.22 1"/></material>
+
+  <link name="base">
+    <visual>
+      <origin xyz="0 0 0.03"/>
+      <geometry><cylinder radius="0.11" length="0.06"/></geometry>
+      <material name="dark"/>
+    </visual>
+  </link>
+  <link name="turret">
+    <visual>
+      <origin xyz="0 0 0.07"/>
+      <geometry><cylinder radius="0.07" length="0.14"/></geometry>
+      <material name="body"/>
+    </visual>
+  </link>
+  <link name="upper_arm">
+    <visual>
+      <origin xyz="0 0 0.16"/>
+      <geometry><box size="0.07 0.07 0.32"/></geometry>
+      <material name="accent"/>
+    </visual>
+    <visual>
+      <origin rpy="1.5708 0 0"/>
+      <geometry><cylinder radius="0.05" length="0.1"/></geometry>
+      <material name="dark"/>
+    </visual>
+  </link>
+  <link name="forearm">
+    <visual>
+      <origin xyz="0 0 0.13"/>
+      <geometry><box size="0.055 0.055 0.26"/></geometry>
+      <material name="body"/>
+    </visual>
+    <visual>
+      <origin rpy="1.5708 0 0"/>
+      <geometry><cylinder radius="0.042" length="0.085"/></geometry>
+      <material name="dark"/>
+    </visual>
+  </link>
+  <link name="wrist">
+    <visual>
+      <origin xyz="0 0 0.04"/>
+      <geometry><box size="0.045 0.045 0.08"/></geometry>
+      <material name="accent"/>
+    </visual>
+    <visual>
+      <origin rpy="1.5708 0 0"/>
+      <geometry><cylinder radius="0.034" length="0.07"/></geometry>
+      <material name="dark"/>
+    </visual>
+  </link>
+  <link name="tool">
+    <visual>
+      <origin xyz="0 0 0.03"/>
+      <geometry><cylinder radius="0.018" length="0.06"/></geometry>
+      <material name="dark"/>
+    </visual>
+  </link>
+
+  <joint name="shoulder_yaw" type="revolute">
+    <parent link="base"/>
+    <child link="turret"/>
+    <origin xyz="0 0 0.06"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-2.6" upper="2.6" effort="40" velocity="2"/>
+  </joint>
+  <joint name="shoulder_pitch" type="revolute">
+    <parent link="turret"/>
+    <child link="upper_arm"/>
+    <origin xyz="0 0 0.16"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.6" upper="1.6" effort="40" velocity="2"/>
+  </joint>
+  <joint name="elbow" type="revolute">
+    <parent link="upper_arm"/>
+    <child link="forearm"/>
+    <origin xyz="0 0 0.32"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-2.4" upper="2.4" effort="25" velocity="2.5"/>
+  </joint>
+  <joint name="wrist_pitch" type="revolute">
+    <parent link="forearm"/>
+    <child link="wrist"/>
+    <origin xyz="0 0 0.26"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-2" upper="2" effort="10" velocity="3"/>
+  </joint>
+  <joint name="tool_mount" type="fixed">
+    <parent link="wrist"/>
+    <child link="tool"/>
+    <origin xyz="0 0 0.08"/>
+  </joint>
+</robot>

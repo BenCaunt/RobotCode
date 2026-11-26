@@ -2,7 +2,7 @@ import { thrownErrorMessage } from "@t3tools/client-runtime/errors";
 import { m as resolveMessage } from "~/i18n/messages";
 import { useAtomValue } from "@effect/atom-react";
 import { NotificationSettings } from "./NotificationSettings";
-import { PRIVACY_POLICY_URL } from "../../legalLinks";
+import { TELEMETRY_GUIDE_URL } from "../../legalLinks";
 import { CheckIcon } from "lucide-react";
 import { msg, T, useGT, useMessages } from "gt-react";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -2567,6 +2567,12 @@ export function AboutSettingsPanel() {
             />
           </>
         )}
+        <p className="text-xs text-muted-foreground">
+          <T>
+            Robot Code is an unofficial fork of T3 Code, independently maintained and unaffiliated
+            with T3 Tools, Inc.
+          </T>
+        </p>
         <MobileAppSettingsRow />
         {primaryEnvironmentId === null ? null : (
           <SettingsRow
@@ -2586,22 +2592,24 @@ export function AboutSettingsPanel() {
           {...setting("privacy-policy")}
           description={
             telemetryOff === undefined
-              ? gt("How we handle your data, including the anonymous usage data T3 Code collects.")
-              : gt("How we handle your data. {telemetryOff}", { telemetryOff })
+              ? gt("Read about product usage data and how to opt out.")
+              : gt("Product usage data. {telemetryOff}", { telemetryOff })
           }
           control={
             <Button
-              render={<a href={PRIVACY_POLICY_URL} target="_blank" rel="noreferrer noopener" />}
+              render={<a href={TELEMETRY_GUIDE_URL} target="_blank" rel="noreferrer noopener" />}
               size="sm"
               variant="outline"
             >
-              <T>View policy</T>
+              <T>View guide</T>
             </Button>
           }
         />
         <SettingsRow
           {...setting("open-source-licenses")}
-          description={gt("Notices for dependencies, assets, and optional tools used by T3 Code.")}
+          description={gt(
+            "Notices for dependencies, assets, and optional tools used by Robot Code.",
+          )}
           control={
             <Button
               render={<Link to="/settings/open-source-licenses" />}

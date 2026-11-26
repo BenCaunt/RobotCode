@@ -265,6 +265,14 @@ export function useComposerMenuItems({
         ...(sideChatAvailable
           ? ([
               {
+                id: "slash:progress",
+                type: "slash-command",
+                command: "progress",
+                label: "/progress",
+                description:
+                  sideChatDisabledReason ?? gt("Summarize session progress and agent results"),
+              },
+              {
                 id: "slash:side",
                 type: "slash-command",
                 command: "side",
@@ -322,6 +330,7 @@ export function useComposerMenuItems({
       // T3's `/clear` replaces the provider's, which would clear a session T3 still treats as live.
       const visibleProviderSlashCommandItems = providerSlashCommandItems.filter(
         (item) =>
+          (item.command.name !== "progress" || !sideChatAvailable) &&
           (item.command.name !== "compact" || compactSlashCommandAvailable) &&
           (item.command.name !== "clear" || !freshSessionAvailable),
       );

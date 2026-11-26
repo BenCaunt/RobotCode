@@ -24,6 +24,7 @@ export function slashCommandItemsForPromptPosition(
     (item) =>
       item.type === "skill" ||
       (item.type === "slash-command" &&
+        item.command !== "progress" &&
         item.command !== "side" &&
         item.command !== "btw" &&
         item.command !== "clear"),

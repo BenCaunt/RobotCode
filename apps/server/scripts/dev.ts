@@ -33,10 +33,12 @@ const isWrittenSinceStart = (path: string) => {
 };
 
 const start = () => {
+  const initialLaunch = startedAt === 0;
   startedAt = Date.now();
   restartPending = false;
   child = NodeChildProcess.spawn(process.execPath, [entry, ...process.argv.slice(2)], {
     cwd: serverDir,
+    env: { ...process.env, T3CODE_DEV_INITIAL_LAUNCH: initialLaunch ? "1" : "0" },
     stdio: "inherit",
   });
   child.on("error", (error) => console.error(error));

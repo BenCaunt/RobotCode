@@ -35,6 +35,12 @@ export function SettingsAboutRouteScreen() {
         contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 18) + 18 }}
       >
         <AppSettingsSection />
+        <Text className="text-sm text-foreground-muted">
+          <T>
+            Robot Code is an unofficial fork of T3 Code, independently maintained and unaffiliated
+            with T3 Tools, Inc.
+          </T>
+        </Text>
       </ScrollView>
     </SettingsScreen>
   );

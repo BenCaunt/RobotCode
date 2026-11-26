@@ -21,6 +21,8 @@ import { extendConnectionAttemptTimeout, keepOutboundFetchOnHttp1 } from "./outb
 import { sharedServerCommandFlags } from "./cli/config.ts";
 import { projectCommand } from "./cli/project.ts";
 import { feedbackCommand } from "./cli/feedback.ts";
+import { evaluationCommand } from "./cli/evaluation.ts";
+import { tileCommand } from "./cli/tile.ts";
 import { threadCommand } from "./cli/thread.ts";
 import { workflowCommand } from "./cli/workflow.ts";
 import { runDefaultServerCommand, serveCommand, startCommand } from "./cli/server.ts";
@@ -72,7 +74,7 @@ const connectUnavailableCommand = Command.make("connect", {
 export const makeCli = ({ cloudEnabled = hasCloudPublicConfig } = {}) =>
   Command.make("t3", { ...sharedServerCommandFlags }).pipe(
     Command.withDescription(
-      "Run T3 Code in this terminal and open it in your browser. To use it from your other devices, run `t3 up`.",
+      "Run Robot Code in this terminal and open it in your browser. To use it from your other devices, run `t3 up`.",
     ),
     Command.withHandler(runDefaultServerCommand),
     Command.withSubcommands([
@@ -93,6 +95,8 @@ export const makeCli = ({ cloudEnabled = hasCloudPublicConfig } = {}) =>
       browserCommand,
       projectCommand,
       threadCommand,
+      tileCommand,
+      evaluationCommand,
       feedbackCommand,
       workflowCommand,
       upCommand,

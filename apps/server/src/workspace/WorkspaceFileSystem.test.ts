@@ -11,6 +11,8 @@ import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Path from "effect/Path";
 
+import { listEvaluationHistory } from "./EvaluationHistory.ts";
+import { publishEvaluation } from "../cli/evaluation.ts";
 import * as ServerConfig from "../config.ts";
 import { makeFakeWslHost } from "../testUtils/fakeWsl.ts";
 import * as VcsDriverRegistry from "../vcs/VcsDriverRegistry.ts";
@@ -106,6 +108,57 @@ const makeWslHost = Effect.gen(function* () {
 });
 
 it.layer(layerTest, { excludeTestServices: true })("WorkspaceFileSystemLive", (it) => {
+  it.effect(
+    "lists verified experiment history and preserves an unavailable baseline reference",
+    () =>
+      Effect.gen(function* () {
+        const cwd = yield* makeTempDir;
+        const paths = yield* Path.Path;
+        const entries = yield* WorkspaceEntries.WorkspaceEntries;
+        const files = yield* WorkspaceFileSystem.WorkspaceFileSystem;
+        const history = () => listEvaluationHistory(cwd, entries, files);
+        expect(yield* history()).toEqual({ runs: [], unavailable: 0, truncated: false });
+        const draft = {
+          version: 1,
+          category: "locomotion",
+          name: "test",
+          title: "Baseline",
+          recordedAt: "2026-04-01T12:00:00Z",
+          mode: "physical",
+          revision: "v1",
+          setup: "dry ramp",
+          evidence: ["capture.csv"],
+          summary: "Reached 6°.",
+        };
+        const manifest = paths.join(cwd, "manifest.json");
+        yield* writeTextFile(cwd, "capture.csv", "6");
+        yield* writeTextFile(cwd, "manifest.json", JSON.stringify(draft));
+        const baseline = yield* publishEvaluation(manifest, cwd);
+        yield* writeTextFile(
+          cwd,
+          "manifest.json",
+          JSON.stringify({
+            ...draft,
+            title: "Follow-up",
+            primaryMetric: { label: "Peak incline", value: 8, unit: "°", baselineValue: 6 },
+            baseline,
+          }),
+        );
+        const child = yield* publishEvaluation(manifest, cwd);
+        const full = yield* history();
+        expect(full.runs).toHaveLength(2);
+        expect(full.runs.find((run) => run.id === child)).toMatchObject({
+          baseline,
+          title: "Follow-up",
+          primaryMetric: { label: "Peak incline", value: 8, unit: "°", baselineValue: 6 },
+        });
+        expect(full.runs[0]).not.toHaveProperty("summary");
+        yield* writeTextFile(cwd, "evaluations/" + baseline + ".json", "changed");
+        const partial = yield* history();
+        expect(partial.unavailable).toBe(1);
+        expect(partial.runs.map((run) => [run.id, run.baseline])).toEqual([[child, baseline]]);
+      }),
+  );
   describe("getMetadata", () => {
     it.effect(
       "reports actual kinds for extensionless files, dotfiles, and dotted directories",

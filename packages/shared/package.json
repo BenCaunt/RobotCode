@@ -3,6 +3,10 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./evaluationReport": {
+      "types": "./src/evaluationReport.ts",
+      "import": "./src/evaluationReport.ts"
+    },
     "./png": {
       "types": "./src/png.ts",
       "import": "./src/png.ts"

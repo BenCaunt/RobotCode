@@ -1,121 +1,55 @@
-<p align="center">
-  <a href="https://t3.codes">
-    <img src="./assets/prod/t3-black-web-icon-192x192.png" width="80" height="80" alt="T3 Code logo" />
-  </a>
-</p>
+# Robot Code
 
-<h1 align="center">T3 Code</h1>
+<img align="right" src="./assets/prod/logo.svg" width="72" alt="Robot Code inspection robot" />
 
-<p align="center">The open-source control plane for coding agents.</p>
+Robot Code is an open-source workspace for building and debugging robot software with coding agents. Watch a robot move, pause a recording where its behavior changes, and give your agent the exact timestamp and entities to investigate.
 
-<p align="center">
-  <a href="https://t3.codes/download"><strong>Download</strong></a> ·
-  <a href="https://apps.apple.com/us/app/t3-code-remote-claude-more/id6787819824">iOS</a> ·
-  <a href="https://play.google.com/store/apps/details?id=com.t3tools.t3code">Android</a> ·
-  <a href="https://app.t3.codes">Web</a> ·
-  <a href="./docs/README.md">Docs</a> ·
-  <a href="https://discord.gg/jn4EGJjrvv">Discord</a>
-</p>
+![A Go2 field recording showing the estimated path, XY allowance, and front camera at the selected time](./.github/readme/field-map.webp)
 
-<p align="center">
-  <a href="https://t3.codes">
-    <img src="./.github/readme/hero.webp" width="100%" alt="T3 Code on desktop with a finished Claude thread, next to the phone app asking to approve a command from Codex" />
-  </a>
-</p>
+The Go2 field map follows one walk. Scrub to a bend in the path to see the front camera frame available at that instant and how old it was. The example and its data run offline. [Build the recording tile](./docs/user/recording-tiles.md)
 
-T3 Code runs the coding agents on your machine and gives them one fast interface. Start a thread at your desk, then approve the next step from your phone.
+## Run from source
 
-It works with Claude Code, Codex, Cursor, OpenCode, Grok Build, Antigravity, Kiro, Pi, Muse Code, fx, and any [ACP](./docs/user/providers-acp.md) agent. If an agent is set up on your computer, T3 Code can control it.
+Install [Vite+](https://viteplus.dev/guide/), then run these commands from the checkout.
 
-## What you get
-
-- **Your subscriptions.** T3 Code does not resell tokens. It drives the agents you are already signed in to.
-- **Every agent in one place.** Change models in the middle of a thread. Let Claude hand a task to Codex.
-- **Desktop, web, and phone.** One server, and every client shows the same threads. There are apps for iOS and Android.
-- **Remote ready.** Run agents on any machine. Connect over your local network, Tailscale, or [T3 Connect](./docs/user/remote-access.md).
-- **Git built in.** Each thread can work in its own worktree. Review the diff, then commit, push, and open a pull request with one button.
-- **Fast.** Performance is a feature here. We measure it, and we treat a dropped frame as a bug.
-- **Open.** Source code is MIT licensed. If you don't like something, fork it under your own branding (see [Trademarks and forks](#trademarks-and-forks)).
-
-## Install
-
-### Desktop app
-
-[Download T3 Code](https://t3.codes/download) for macOS, Windows, or Linux. You can also use a package manager:
-
-| Platform       | Command                                                              |
-| -------------- | -------------------------------------------------------------------- |
-| macOS          | `brew install --cask t3-code`                                        |
-| Windows        | `winget install T3Tools.T3Code` or `scoop install extras/t3code`     |
-| Arch Linux     | `yay -S t3code-bin`                                                  |
-| Nix            | `nix profile add github:NixOS/nixpkgs/nixos-unstable#t3code`         |
-| Debian, Ubuntu | `.deb` from [Releases](https://github.com/pingdotgg/t3code/releases) |
-
-### Command line
-
-This installs the `t3` command. Run `t3` to start the server and open the web app.
-
-```bash
-curl -fsSL https://t3.codes/install.sh | sh
+```sh
+vp i
+vp run dev
 ```
 
-On Windows, in PowerShell:
+Open the pairing URL printed by the development server. For Electron, use `vp run dev:desktop`. The iOS and Android clients can connect to the same environment. [Mobile setup](./apps/mobile/README.md)
 
-```powershell
-irm https://t3.codes/install.ps1 | iex
+## Watch a robot
+
+Open **Robotics** under a project and choose **Connect**. A registered robot can start an approved telemetry bridge and show its Rerun stream on web or desktop. In this Mini Pupper simulation, the trajectory sits beside commanded and measured speed. Pick a turn and follow the yaw rate, body tilt, and joint motion together. [Set up a live view or try the simulated arm](./docs/user/robotics-live-view.md)
+
+![Mini Pupper simulation with its trajectory and synchronized motion and servo plots](./.github/readme/live-view.webp)
+
+## Investigate a run
+
+Open **Evaluations → Experiment history** to follow a baseline and its subsequent runs. A result records the revision, setup, measurements, and fingerprints of its evidence. Open a replay citation to jump to a recorded decision. Here, three camera views show what the navigation policy saw, alongside its predicted map, requested step, and the evaluator’s collision map. [Publish and replay an evaluation](./docs/user/evaluations.md)
+
+![A navigation replay paused at policy step seven with three camera views, model output, and the evaluator’s map](./.github/readme/decision-replay.webp)
+
+To investigate with an agent, open a project `.rrd` file in a conversation, pause it, select the relevant entities, and choose **Annotate → Add to chat**. Your draft carries the observation and a reference to that version of the recording. [Annotate a recording](./docs/user/robotics-recordings.md)
+
+## Safety model
+
+**Connection and readiness.** An operator registers the robot on the environment host. **Connect** can start approved, non-actuating bridges. A passing probe means the robot met the configured readiness criterion. For a telemetry freshness guarantee, the probe itself must check sample age. [Register a robot and configure its probe](./docs/user/robotics-connections.md)
+
+```mermaid
+flowchart LR
+    connect["Connect"] --> connecting["Connecting"]
+    connecting --> unverified["Readiness unverified"]
+    connecting --> ready["Ready"]
+    connecting --> degraded["Degraded"]
+    ready <--> degraded
 ```
 
-To try it once without an install, run `npx t3@latest`.
+**Managed processes.** The operator chooses each job’s executable, arguments, working directory, and resource claims on the host. The agent can inspect jobs and logs. Changing a session or job through the robotics tools requires a live project conversation with Full Access in Default mode. A claim reserves its resource among jobs on that environment. [Managed processes](./docs/user/robotics-processes.md)
 
-### Phone
+**Physical command authority.** The robotics tools expose observation and process management. The repository includes a simulated command receiver to exercise exclusive writer leases, handoff, rejection of stale commands, and a watchdog that returns the receiver to its safe state when commands stop. Physical deployment requires enforcement at the robot’s command receiver, a robot-local watchdog, and an independent emergency stop. [Run the authority simulation](./docs/operations/robotics-authority.md)
 
-Get the app from the [App Store](https://apps.apple.com/us/app/t3-code-remote-claude-more/id6787819824) or [Google Play](https://play.google.com/store/apps/details?id=com.t3tools.t3code). Then follow [remote access](./docs/user/remote-access.md) to connect it to your computer.
+## License and credits
 
-### Sign in to an agent
-
-T3 Code needs one agent that is installed and signed in. For example, install [Claude Code](https://claude.com/product/claude-code) and run `claude auth login`, or install [Codex CLI](https://developers.openai.com/codex/cli) and run `codex login`.
-
-[Provider setup](./docs/user/install.md#providers) has the steps for each agent. [Install T3 Code](./docs/user/install.md) covers nightly builds, AppImage, WSL, and NixOS.
-
-## "Wait, what are you selling me?"
-
-Nothing. We built T3 Code because we wanted the best possible development experience with agents. We were inspired by existing solutions like the Codex desktop app, Conductor, Claude Desktop and Cursor Glass, but none met our bar.
-
-We wanted something performant, remote-ready, and truly open. If we ever go the wrong direction, we want you to have everything you need to fork the source code and build the tool that you want, under your own name and branding.
-
-## Documentation
-
-- [Install and first run](./docs/user/install.md)
-- [Remote access from a phone or another machine](./docs/user/remote-access.md)
-- [Permission modes](./docs/user/permission-modes.md)
-- [Source control](./docs/user/source-control.md)
-- [Connect outside agents over MCP](./docs/user/outside-agents.md)
-- [FAQ](./docs/user/faq.md)
-
-[All docs](./docs/README.md) has the full list.
-
-## Contributing
-
-We have limited review capacity. Small, focused fixes are the most likely to be merged. Features need an approved discussion first.
-
-- Read [CONTRIBUTING.md](./CONTRIBUTING.md) before you report a bug or open a pull request.
-- Put feature requests in [Ideas](https://github.com/pingdotgg/t3code/discussions/categories/ideas).
-- Build from source with the [development runbook](./docs/operations/00_development.md#first-checkout). The [architecture overview](./docs/internals/01_architecture.md) explains how it works.
-- Get help in [Discord](https://discord.gg/jn4EGJjrvv).
-
-## License
-
-The source code in this repository is licensed under the [MIT License](./LICENSE).
-
-## Trademarks and forks
-
-The MIT license applies **only to the source code**. It does not grant any rights to T3 Tools, Inc.'s trademarks, branding, or trade dress, including the **T3 Code** name, wordmark, logos, and application icons.
-
-If you fork, redistribute, or build on T3 Code's source code:
-
-- **Use your own branding.** Replace the T3 Code name, wordmark, logos, and application icons in any public fork, redistributed build, website, package, or app store listing.
-- **Be explicitly clear that your project is unofficial.** Do not use the T3 Code name, wordmark, logo, or branding in your own projects without making it unmistakably clear that your project is unofficial and not affiliated with or endorsed by T3 Tools, Inc.
-
-Using our name, wordmark, logo, or branding in a way that suggests official status or affiliation is trademark infringement and unlawful. **Any project indicating or implying that it is an official version of T3 Code when it is not will be pursued to the full extent of the law.**
-
-See [TRADEMARK.md](./TRADEMARK.md) for the full trademark and branding policy.
+Robot Code is an independent, unofficial fork of [T3 Code](https://github.com/pingdotgg/t3code). We thank the upstream contributors for the agent workspace this project builds on. T3 Tools, Inc. has no affiliation with Robot Code and does not maintain or endorse it. The Robot Code name and inspection robot identify this fork. [MIT License](./LICENSE) · [Trademark policy](./TRADEMARK.md)

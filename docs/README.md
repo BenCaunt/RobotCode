@@ -1,6 +1,14 @@
-# T3 Code docs
+# Robot Code documentation
 
-## Using T3 Code
+- [Build Robot Code from source](../README.md#run-from-source)
+- [Manage robotics processes](./user/robotics-processes.md)
+- [Track project evaluation results](./user/evaluations.md)
+- [Compose recording tiles](./user/recording-tiles.md)
+- [Review Rerun recordings](./user/robotics-recordings.md)
+
+## Inherited T3 Code guides
+
+These guides describe the upstream software. References to hosted services, official downloads and store listings refer to T3 Code.
 
 - [Install T3 Code](./user/install.md)
 - [Messages and context](./user/composer.md)

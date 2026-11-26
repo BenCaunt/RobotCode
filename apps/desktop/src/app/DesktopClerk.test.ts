@@ -123,7 +123,7 @@ describe("DesktopClerk", () => {
       name: "packaged macOS",
       isDevelopment: false,
       platform: "darwin" as const,
-      userData: "/tmp/app-data/t3code-v2",
+      userData: "/tmp/app-data/Robot Code",
     },
     {
       name: "packaged Linux",
@@ -300,7 +300,9 @@ describe("DesktopClerk", () => {
 
         assert.isTrue(Exit.hasInterrupts(exit));
         assert.deepEqual(events, [
-          "setPath:userData:/tmp/app-data/t3code-v2",
+          platform === "darwin"
+            ? "setPath:userData:/tmp/app-data/Robot Code"
+            : "setPath:userData:/tmp/app-data/t3code-v2",
           "requestSingleInstanceLock",
           "quit",
         ]);

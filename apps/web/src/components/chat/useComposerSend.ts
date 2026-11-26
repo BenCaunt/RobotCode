@@ -1,7 +1,11 @@
 import { msg } from "gt-react";
 import { thrownErrorMessage } from "@t3tools/client-runtime/errors";
 import { m } from "~/i18n/messages";
-import { isClearComposerCommand, parseSideChatCommand } from "@t3tools/shared/composerTrigger";
+import {
+  isClearComposerCommand,
+  parseSideChatCommand,
+  progressSnapshot,
+} from "@t3tools/shared/composerTrigger";
 import { readWorktreeBaseBranch } from "../../worktreeRepositoryChoiceStore";
 import { armFreshSession, disarmFreshSession, readFreshSessionArm } from "./freshSessionArms";
 import {
@@ -96,7 +100,7 @@ import {
   responseContextReference,
 } from "../../lib/composerContextRecords";
 import { environmentServerConfigsAtom } from "../../state/server";
-import { threadEnvironment } from "../../state/threads";
+import { environmentThreadShells, threadEnvironment } from "../../state/threads";
 import { runMobileComposerTransition } from "./draftHeroTransition";
 import { useClientSettingsHydrated } from "../../hooks/useSettings";
 import { useStableCallback } from "../../hooks/useStableCallback";
@@ -620,7 +624,20 @@ export function useComposerSend(input: ComposerSendInput) {
     if (onSideChat && sendCtx && sideChatCommand && sideChatDisabledReason === null) {
       const replyTo =
         useComposerDraftStore.getState().getComposerDraft(composerDraftTarget)?.replyTo ?? null;
-      const prompt = withReplyReference(sideChatCommand.prompt, replyTo);
+      const summary = sideChatCommand.progress
+        ? progressSnapshot(
+            activeThread.id,
+            new Date().toISOString(),
+            appAtomRegistry.get(
+              environmentThreadShells.sideChatsAtom({
+                environmentId: activeThread.environmentId,
+                threadId: activeThread.id,
+              }),
+            ),
+            sideChatCommand.prompt,
+          )
+        : null;
+      const prompt = withReplyReference(summary?.prompt ?? sideChatCommand.prompt, replyTo);
       const { sendableTerminalContexts, hasSendableContent } = deriveComposerSendState({
         prompt,
         imageCount: sendCtx.images.length + sendCtx.files.length,
@@ -699,14 +716,17 @@ export function useComposerSend(input: ComposerSendInput) {
               })),
             }),
           }),
-          titleSeed: deriveThreadTitleSeed(
-            {
-              text: snapshot.messageText,
-              attachments: snapshot.attachments,
-              fallbackLabels: sendTitleFallbackLabels(snapshot),
-            },
-            m,
-          ),
+          ...(summary && { sideChatTitle: summary.title }),
+          titleSeed:
+            summary?.title ??
+            deriveThreadTitleSeed(
+              {
+                text: snapshot.messageText,
+                attachments: snapshot.attachments,
+                fallbackLabels: sendTitleFallbackLabels(snapshot),
+              },
+              m,
+            ),
         });
       }).finally(() => {
         sendInFlightRef.current = false;

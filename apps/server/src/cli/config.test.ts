@@ -327,6 +327,33 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
     }),
   );
 
+  it.effect("opens the browser only on the requested first launch of a watched dev server", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const baseDir = yield* fs.makeTempDirectoryScoped();
+      const flags = { ...minimalDesktopFlags(baseDir), mode: Option.some("web" as const) };
+      const cases = [
+        { initialLaunch: undefined, noBrowser: "0", expected: true },
+        { initialLaunch: "1", noBrowser: "0", expected: false },
+        { initialLaunch: "1", noBrowser: "1", expected: true },
+        { initialLaunch: "0", noBrowser: "0", expected: true },
+      ] as const;
+      for (const { initialLaunch, noBrowser, expected } of cases) {
+        const provider = ConfigProvider.fromEnv({
+          env: {
+            T3CODE_SINGLE_ORIGIN_DEV: "1",
+            T3CODE_NO_BROWSER: noBrowser,
+            ...(initialLaunch ? { T3CODE_DEV_INITIAL_LAUNCH: initialLaunch } : {}),
+          },
+        });
+        const config = yield* resolveServerConfig(flags, Option.none()).pipe(
+          Effect.provide(Layer.merge(NetService.layer, ConfigProvider.layer(provider))),
+        );
+        expect(config.noBrowser).toBe(expected);
+      }
+    }),
+  );
+
   it.effect("enables a trimmed reusable auth token only for web dev mode", () =>
     Effect.gen(function* () {
       const baseDir = yield* FileSystem.FileSystem.pipe(

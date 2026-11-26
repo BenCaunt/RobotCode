@@ -27,6 +27,7 @@ export type RoboticsJobRestartInput = typeof RoboticsJobRestartInput.Type;
 
 export const RoboticsJobListInput = Schema.Struct({
   ...RoboticsJobProjectInput.fields,
+  view: Schema.optionalKey(Schema.Literals(["current", "archived"])),
   before: Schema.optionalKey(PositiveInt),
   limit: Schema.optionalKey(Limit),
 });
@@ -82,6 +83,7 @@ export type RoboticsJob = typeof RoboticsJob.Type;
 export const RoboticsJobList = Schema.Struct({
   jobs: Schema.Array(RoboticsJob),
   nextBefore: Schema.NullOr(PositiveInt),
+  hasArchived: Schema.optionalKey(Schema.Boolean),
 });
 export type RoboticsJobList = typeof RoboticsJobList.Type;
 

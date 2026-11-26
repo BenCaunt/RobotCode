@@ -339,6 +339,32 @@ export const ProjectListEntriesInput = Schema.Struct({
 });
 export type ProjectListEntriesInput = typeof ProjectListEntriesInput.Type;
 
+export const EvaluationPrimaryMetric = Schema.Struct({
+  label: TrimmedNonEmptyString.check(Schema.isMaxLength(96)),
+  value: Schema.Finite,
+  unit: Schema.optionalKey(TrimmedNonEmptyString.check(Schema.isMaxLength(32))),
+  baselineValue: Schema.optionalKey(Schema.Finite),
+});
+export type EvaluationPrimaryMetric = typeof EvaluationPrimaryMetric.Type;
+
+export const EvaluationHistoryRun = Schema.Struct({
+  primaryMetric: Schema.optionalKey(EvaluationPrimaryMetric),
+  id: Schema.String,
+  title: Schema.String,
+  category: Schema.String,
+  mode: Schema.Literals(["physical", "simulation"]),
+  recordedAt: Schema.String,
+  revision: Schema.String,
+  baseline: Schema.optionalKey(Schema.String),
+});
+export type EvaluationHistoryRun = typeof EvaluationHistoryRun.Type;
+
+export const ProjectEvaluationHistoryResult = Schema.Struct({
+  runs: Schema.Array(EvaluationHistoryRun),
+  unavailable: NonNegativeInt,
+  truncated: Schema.Boolean,
+});
+
 export const ProjectListEntriesResult = Schema.Struct({
   entries: Schema.Array(ProjectEntry),
   truncated: Schema.Boolean,

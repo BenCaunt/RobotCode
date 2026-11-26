@@ -22,7 +22,7 @@ the current project, or use a project's own new-thread action. A new thread carr
 your model and mode selections, unless the destination project has its own model default.
 Its branch and workspace mode come from your configured defaults. To continue in
 an existing worktree, use **New thread in this worktree** from the branch toolbar.
-While the sidebar is filtered to one project, the sidebar's **New thread** button
+In the flat layout, while the sidebar is filtered to one project, the sidebar's **New thread** button
 starts the thread in that project instead of asking which project to use.
 
 On mobile, **New thread** starts in the current thread's project, or else in the
@@ -161,17 +161,18 @@ choice.
 While this is on, the active list is ordered by when each thread last came back to you, so you
 cannot drag or move threads within it. Your saved order returns when you turn it off.
 
-### Group threads by project (beta)
+### Project folders
 
-Turn on **Settings → Labs → Boring sidebar (group by project)** on web and desktop to put active
-threads in a folder for each project. Pinned projects come first. A project with no active
-threads has no folder unless it is pinned or you pick it in the project filter. An archived
+On web and desktop, expand a project to see its active chats, **Robotics**, and **Evaluations**.
+Open projects appear even when they have no chats. Pinned projects come first. An archived
 project's folder comes last and shows only while it has active threads. Click a folder to open or
 close it. A closed folder shows how many threads it holds, and a dot when one of them
 needs you. Use the pen button on a folder, or right-click it, to start a thread in that project.
 Pinned threads stay above the folders, and Snoozed and Settled stay below them. In this mode you
 can drag a thread onto the composer to mention it, but not within the sidebar, and the Working
-section is off. Each device keeps its own choice.
+section is off. Project folders are the default. Change the layout in **Settings → Labs → Boring sidebar (group by project)**.
+
+On mobile, tap a project in the thread list to see its chats and tools. Tap **All projects** to return.
 
 ## Settle finished work
 
@@ -370,6 +371,8 @@ You can also choose **Side chat** from the **+** menu in the right panel. The si
 chat opens as a tab there, with its own composer. Side chats do not show in the
 sidebar. Find one again under **Side chats** in thread details, where it opens
 [like a subagent does](#open-a-thread-beside-the-one-you-are-in).
+
+Send `/progress` in the parent thread to open a dated progress snapshot. Optionally add a focus, such as `/progress compare terrain`. The agent reviews the parent and its subagents, cites results, and charts comparable measurements. Later snapshots can compare against the previous one. Reopen snapshots under **Side chats**.
 
 A side chat works in the same folder as the thread and starts with the permissions,
 model, and reasoning level shown in the thread's composer, including for its first

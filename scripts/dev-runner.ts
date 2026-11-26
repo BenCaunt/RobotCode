@@ -978,7 +978,9 @@ const devRunnerCli = Command.make("dev-runner", {
     Flag.map(Option.getOrUndefined),
   ),
   browser: Flag.Boolean("browser").pipe(
-    Flag.withDescription("Open a browser automatically (disabled by default for web dev)."),
+    Flag.withDescription(
+      "Open the browser on initial startup only (disabled by default for web dev).",
+    ),
     Flag.withDefault(false),
   ),
   autoBootstrapProjectFromCwd: Flag.Boolean("auto-bootstrap-project-from-cwd").pipe(

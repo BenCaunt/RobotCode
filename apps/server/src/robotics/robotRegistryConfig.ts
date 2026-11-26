@@ -1,5 +1,5 @@
 import * as Schema from "effect/Schema";
-import { ProjectId, RobotId, TrimmedNonEmptyString } from "@t3tools/contracts";
+import { ProjectId, RobotId, RobotLiveView, TrimmedNonEmptyString } from "@t3tools/contracts";
 
 const ProbeUrl = Schema.URLFromString.check(
   Schema.makeFilter(
@@ -42,10 +42,20 @@ const RobotRegistration = Schema.Struct({
   ),
   setupModel: Schema.optionalKey(TrimmedNonEmptyString.check(Schema.isMaxLength(128))),
   bridgeDefinitions: Schema.optionalKey(BridgeDefinitions),
-  readiness: Schema.Struct({
-    url: ProbeUrl,
-    expectedText: TrimmedNonEmptyString.check(Schema.isMaxLength(512)),
-  }),
+  liveView: Schema.optionalKey(RobotLiveView),
+  readiness: Schema.optionalKey(
+    Schema.Union([
+      Schema.Struct({
+        url: ProbeUrl,
+        expectedText: TrimmedNonEmptyString.check(Schema.isMaxLength(512)),
+      }),
+      Schema.Struct({
+        adapter: Schema.String.check(
+          Schema.isPattern(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,95}(?:\.exe)?$/u),
+        ),
+      }),
+    ]),
+  ),
 });
 export type RobotRegistration = typeof RobotRegistration.Type;
 

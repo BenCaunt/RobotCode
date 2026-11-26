@@ -136,6 +136,8 @@ import {
   SettingsOpenSourceLicensesRouteScreen,
 } from "./features/settings/SettingsOpenSourceLicensesRouteScreen";
 import { SettingsProjectGroupingRouteScreen } from "./features/settings/SettingsProjectGroupingRouteScreen";
+import { EvaluationsRouteScreen } from "./features/evaluations/EvaluationsRouteScreen";
+import { RoboticsRouteScreen } from "./features/robotics/RoboticsRouteScreen";
 import { SettingsProjectOverviewRouteScreen } from "./features/settings/SettingsProjectOverviewRouteScreen";
 import { UsageLimitAccountScreen } from "./features/usage/UsageLimitsPooled";
 import { UsageRouteScreen } from "./features/usage/UsageRouteScreen";
@@ -166,6 +168,8 @@ const { title: _compactBrandTitle, ...compactBrandHeaderOptions } = getCompactBr
 // Resolved in the rendered Navigator's screenOptions so each header title follows the UI language;
 // route options stay plain objects because registerPresentedRoutes reads them at load.
 const ROUTE_TITLES: Readonly<Record<string, string>> = {
+  Evaluations: msg("Evaluations"),
+  Robotics: msg("Robotics"),
   Settings: msg("Settings"),
   SettingsEnvironments: msg("Environments"),
   SettingsEnvironmentDetail: msg("Environment"),
@@ -584,6 +588,16 @@ const RootStackConfig = createWorkspaceStackNavigator({
         contentStyle: { backgroundColor: "transparent" },
         ...compactBrandHeaderOptions,
       },
+    }),
+    Evaluations: createNativeStackScreen({
+      screen: EvaluationsRouteScreen,
+      linking: "evaluations",
+      options: pageRoute(),
+    }),
+    Robotics: createNativeStackScreen({
+      screen: RoboticsRouteScreen,
+      linking: "robotics",
+      options: pageRoute(),
     }),
     PullRequest: createNativeStackScreen({
       screen: PullRequestRouteScreen,

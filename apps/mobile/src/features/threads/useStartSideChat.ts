@@ -27,7 +27,7 @@ import { useOpenLinkedThread } from "./useOpenLinkedThread";
 export type SideChatMessage = Pick<
   StartThreadTurnInput["message"],
   "text" | "attachments" | "context"
-> & { readonly titleSeed: string };
+> & { readonly titleSeed: string; readonly sideChatTitle?: string };
 
 /**
  * Forks `source` at its latest stable point into a side chat, sends `message` there, and opens
@@ -62,7 +62,7 @@ export function useStartSideChat() {
       input: {
         sourceThreadId: source.threadId,
         targetThreadId,
-        title: m(msg("Side chat")),
+        title: message.sideChatTitle ?? m(msg("Side chat")),
         creationSource: "mobile",
       },
     });
@@ -106,7 +106,7 @@ export function useStartSideChat() {
         return false;
       }
     }
-    const { titleSeed, ...content } = message;
+    const { titleSeed, sideChatTitle: _sideChatTitle, ...content } = message;
     const turn = await startTurn({
       environmentId: source.environmentId,
       input: {

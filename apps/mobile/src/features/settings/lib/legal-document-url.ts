@@ -25,13 +25,15 @@ function marketingSiteDocumentUrl(path: string): string {
 const PRIVACY_POLICY_URL = marketingSiteDocumentUrl("privacy-policy");
 const SECURITY_POLICY_URL = marketingSiteDocumentUrl("security-policy");
 const TERMS_OF_SERVICE_URL = marketingSiteDocumentUrl("terms-of-service");
-export const LEGAL_URL = marketingSiteDocumentUrl("legal");
+export const LEGAL_URL = process.env.EXPO_PUBLIC_MARKETING_SITE_URL
+  ? marketingSiteDocumentUrl("legal")
+  : "https://github.com/BenCaunt/RobotCode/blob/HEAD/LICENSE";
 
 const ALLOWED_LEGAL_DOCUMENT_URLS = [
   LEGAL_URL,
-  PRIVACY_POLICY_URL,
-  TERMS_OF_SERVICE_URL,
-  SECURITY_POLICY_URL,
+  ...(process.env.EXPO_PUBLIC_MARKETING_SITE_URL
+    ? [PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL, SECURITY_POLICY_URL]
+    : []),
 ] as const;
 
 function webDocumentIdentity(value: string): string | null {

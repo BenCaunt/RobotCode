@@ -149,6 +149,11 @@ const EnvServerConfig = Config.all({
         .filter((entry) => entry.length > 0),
     ),
   ),
+  singleOriginDev: Config.Boolean("T3CODE_SINGLE_ORIGIN_DEV").pipe(Config.withDefault(false)),
+  initialDevLaunch: Config.Boolean("T3CODE_DEV_INITIAL_LAUNCH").pipe(
+    Config.option,
+    Config.map(Option.getOrUndefined),
+  ),
   noBrowser: Config.Boolean("T3CODE_NO_BROWSER").pipe(
     Config.option,
     Config.map(Option.getOrUndefined),
@@ -364,9 +369,11 @@ export const resolveServerConfig = Effect.fn("config.resolveServerConfig")(funct
   yield* fs.makeDirectory(path.dirname(serverTracePath), { recursive: true });
   const startupPresentation = options?.startupPresentation ?? "browser";
   const isHeadlessStartup = startupPresentation === "headless";
+  // A dev watcher owns one browser launch across all of its server restarts.
+  const allowBrowserLaunch = env.initialDevLaunch ?? !env.singleOriginDev;
   const noBrowser = Option.getOrElse(
     resolveOptionPrecedence(
-      isHeadlessStartup ? Option.some(true) : Option.none(),
+      isHeadlessStartup || !allowBrowserLaunch ? Option.some(true) : Option.none(),
       normalizedFlags.noBrowser,
       Option.fromUndefinedOr(env.noBrowser),
       Option.fromUndefinedOr(bootstrap?.noBrowser),

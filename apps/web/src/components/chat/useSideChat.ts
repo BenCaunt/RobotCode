@@ -23,7 +23,7 @@ import { useOrchestrationCommand } from "../../state/use-orchestration-command";
 export type SideChatMessage = Pick<
   StartThreadTurnInput["message"],
   "text" | "attachments" | "context"
-> & { readonly titleSeed: string };
+> & { readonly titleSeed: string; readonly sideChatTitle?: string };
 
 /**
  * Starts side chats from `threadRef`, or offers none when it is null. `open` forks the
@@ -61,8 +61,12 @@ export function useSideChat(input: {
     const targetThreadId = newThreadId();
     const fork = await forkSideChat({
       environmentId: threadRef.environmentId,
-      // oxlint-disable-next-line t3code/no-untranslated-copy -- stored on the server as the thread title, shared by every viewer
-      input: { sourceThreadId: threadRef.threadId, targetThreadId, title: "Side chat" },
+      input: {
+        sourceThreadId: threadRef.threadId,
+        targetThreadId,
+        // oxlint-disable-next-line t3code/no-untranslated-copy -- stored on the server as the thread title, shared by every viewer
+        title: message?.sideChatTitle ?? "Side chat",
+      },
     });
     if (fork._tag === "Failure") {
       reportFailure(fork, m(msg("Could not start a side chat.")));
@@ -99,7 +103,7 @@ export function useSideChat(input: {
     }
     // Send before showing the tab: closing a tab whose side chat has no run deletes it.
     if (message) {
-      const { titleSeed, ...content } = message;
+      const { titleSeed, sideChatTitle: _sideChatTitle, ...content } = message;
       const turn = await startThreadTurn({
         environmentId: threadRef.environmentId,
         input: {

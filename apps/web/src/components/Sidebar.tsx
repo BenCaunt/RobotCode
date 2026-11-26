@@ -53,6 +53,7 @@ import {
 import {
   parseScopedThreadKey,
   scopeProjectRef,
+  scopedProjectKey,
   scopeThreadRef,
   scopedThreadKey,
 } from "@t3tools/client-runtime/environment";
@@ -280,6 +281,7 @@ import {
   useDraftTerminalLabels,
   useSidebarDrafts,
 } from "./sidebar/SidebarDraftBlock";
+import { SidebarProjectLinks } from "./sidebar/SidebarProjectLinks";
 import {
   SidebarProjectFolderHeader,
   sidebarFolderRowId,
@@ -441,7 +443,6 @@ function useSidebarThreads(input: {
   readonly departingThreadKey: string | null;
   // Set in boring mode: the project groups to fold active threads into, in order.
   readonly folderGroups: readonly SidebarProjectSnapshot[] | null;
-  // Keeps folders with no active threads, so a project the user filtered to or pinned can start one.
   readonly keepEmptyFolders: (group: SidebarProjectSnapshot) => boolean;
 }) {
   const {
@@ -1386,7 +1387,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
         : scopedProjectGroups
       : null,
     keepEmptyFolders: (group) =>
-      scopedProjectGroups.length > 0 || (group.pinned && !group.archived),
+      !group.archived && (!group.isScratch || scopedProjectGroups.length > 0 || group.pinned),
   });
 
   // Ranked across environments as the palette ranks them, so one
@@ -1999,7 +2000,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
         const key = scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id));
         return { kind: "thread", key, section };
       });
-    // Boring mode keeps a pinned open project or one the user filtered to, so it can start a thread.
+    // Project tools remain reachable even when the folder has no threads.
     if (
       !hasProjectFolders &&
       pinnedThreads.length +
@@ -2058,7 +2059,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   const listMotionLayoutKey = [
     sidebarListItemsKey,
     projectFolders
-      ?.map((folder) => `${folder.group.projectKey}:${folder.threads.length}`)
+      ?.map((folder) => `${folder.group.projectKey}:${folder.collapsed}:${folder.threads.length}`)
       .join("\n") ?? "",
     visibleDraftSessionCount,
     routeDraftIdForRows ?? "",
@@ -3041,12 +3042,13 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
       )
     : null;
 
+  const viewedThread = newThreadContext.activeThread ?? newThreadContext.activeDraftThread;
   const handleNewThreadClick = (event?: ReactMouseEvent) => {
     const scopedProjectRef = resolveScopedNewThreadProjectRef({
       shiftKey: event?.shiftKey ?? false,
       // The folder sidebar's header button always opens the picker.
       scopedProjectGroups: boringSidebarEnabled ? [] : scopedProjectGroups,
-      viewed: newThreadContext.activeThread ?? newThreadContext.activeDraftThread,
+      viewed: viewedThread,
     });
     if (scopedProjectRef) {
       if (isMobile) setOpenMobile(false);
@@ -3090,6 +3092,11 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
         className="min-h-full"
         fixedHeader={
           <SidebarGroup className="z-[1]">
+            {!boringSidebarEnabled && (
+              <SidebarProjectLinks
+                project={viewedThread ? scopedProjectKey(viewedThread) : undefined}
+              />
+            )}
             <SidebarThreadHeader
               hasProjects={projectGroups.length > 0}
               projectScope={
