@@ -1108,11 +1108,18 @@ it.layer(NodeServices.layer)("effect-acp protocol", (it) => {
     }),
   );
 
-  it.effect("fails current, queued, and future responses when the stdout writer fails", () =>
+  it.effect.each([
+    { failure: "a broken stream", childExit: undefined, errorTag: "AcpTransportError" },
+    {
+      failure: "a child exit",
+      childExit: new AcpError.AcpProcessExitedError({ signal: "SIGABRT" }),
+      errorTag: "AcpProcessExitedError",
+    },
+  ])("fails current, queued, and future writes after $failure", ({ childExit, errorTag }) =>
     Effect.gen(function* () {
       const writeStarted = yield* Deferred.make<void>();
       const releaseFailure = yield* Deferred.make<void>();
-      const failures = yield* Queue.unbounded<string>();
+      const failures = yield* Queue.unbounded<{ requestId: string; error: AcpError.AcpError }>();
       const terminated = yield* Deferred.make<AcpError.AcpError>();
       const stdio = Stdio.make({
         args: Effect.succeed([]),
@@ -1129,7 +1136,9 @@ it.layer(NodeServices.layer)("effect-acp protocol", (it) => {
       const transport = yield* AcpProtocol.makeAcpPatchedProtocol({
         stdio,
         serverRequestMethods: new Set(),
-        onOutgoingResponseFailure: (requestId) => Queue.offer(failures, requestId),
+        ...(childExit === undefined ? {} : { terminationError: Effect.succeed(childExit) }),
+        onOutgoingResponseFailure: (requestId, error) =>
+          Queue.offer(failures, { requestId, error }),
         onTermination: (error) => Deferred.succeed(terminated, error).pipe(Effect.asVoid),
       });
       const send = (requestId: string) =>
@@ -1147,14 +1156,15 @@ it.layer(NodeServices.layer)("effect-acp protocol", (it) => {
       assert.isUndefined(current.pollUnsafe());
       assert.isUndefined(queued.pollUnsafe());
       yield* Deferred.succeed(releaseFailure, undefined);
-      assert.instanceOf(yield* Deferred.await(terminated), AcpError.AcpTransportError);
+      assert.strictEqual((yield* Deferred.await(terminated))._tag, errorTag);
       yield* Fiber.join(current);
       yield* Fiber.join(queued);
       yield* send("future");
 
+      const failedWrites = yield* Queue.takeN(failures, 3);
       assert.deepEqual(
-        new Set(yield* Queue.takeN(failures, 3)),
-        new Set(["current", "queued", "future"]),
+        failedWrites.map(({ requestId, error }) => [requestId, error._tag]).sort(),
+        ["current", "future", "queued"].map((requestId) => [requestId, errorTag]),
       );
     }),
   );
