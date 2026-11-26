@@ -312,7 +312,12 @@ it("verifies the recording and pauses Rerun at a linked citation, including afte
     await using screen = await render(<RouterProvider router={router} />, { router: false });
     await expect.element(screen.getByText(/This recording differs/)).toBeVisible();
     expect(seek).not.toHaveBeenCalled();
+    // The software renderer emits thousands of shader debug messages during cold startup.
+    using _shaderLogs = vi.spyOn(console, "debug").mockImplementation(() => {});
     await screen.getByRole("button", { name: "Retry" }).click();
+    await expect
+      .element(screen.getByRole("status").filter({ hasText: "Verified recording" }))
+      .toBeVisible();
     const player = await applied.promise;
     const cursor = async () => (await player.getState()).recordings[0]!;
     expect((await cursor()).currentTime).toMatchObject({ timeline: "elapsed", time: 12400000000n });
