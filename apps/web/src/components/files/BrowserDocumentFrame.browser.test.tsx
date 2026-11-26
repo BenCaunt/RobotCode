@@ -360,6 +360,62 @@ it("keeps the first and last selected card rings inside the fitted renderer fram
 });
 
 describe("BrowserDocumentFrame", () => {
+  it("restores the selected recording time when a tile is rebuilt", async () => {
+    const first = URL.createObjectURL(
+      new Blob(
+        [
+          "<button onclick=\"parent.postMessage({type:'robot-code.tile.cursor',seconds:12.5},'*')\">Seek</button>",
+        ],
+        { type: "text/html" },
+      ),
+    );
+    const second = URL.createObjectURL(
+      new Blob(
+        [
+          '<script>addEventListener("message", e => { if (e.data.type === "robot-code.tile.restore") parent.postMessage({type:"restored-test-cursor",seconds:e.data.seconds},"*") })</script>',
+        ],
+        { type: "text/html" },
+      ),
+    );
+    using _urls = {
+      [Symbol.dispose]: () => {
+        URL.revokeObjectURL(first);
+        URL.revokeObjectURL(second);
+      },
+    };
+    const view = (src: string) => (
+      <div className="flex h-75 w-100 flex-col">
+        <BrowserDocumentFrame
+          src={src}
+          documentId="bench"
+          documentKey={src}
+          title="bench.tile.html"
+          pdf={false}
+        />
+      </div>
+    );
+    await using screen = await render(view(first));
+    const tileFrame = () => page.frameLocator(screen.getByTitle("bench.tile.html"));
+    const restored: Array<{ source: MessageEventSource | null; seconds: number }> = [];
+    const onMessage = (event: MessageEvent) => {
+      if (event.data?.type === "restored-test-cursor")
+        restored.push({ source: event.source, seconds: event.data.seconds });
+    };
+    window.addEventListener("message", onMessage);
+    using _listener = { [Symbol.dispose]: () => window.removeEventListener("message", onMessage) };
+    await tileFrame().getByRole("button", { name: "Seek" }).click();
+    await screen.rerender(view(second));
+    await vi.waitFor(() => expect(screen.container.querySelectorAll("iframe")).toHaveLength(1));
+    await vi.waitFor(() =>
+      expect(
+        restored.some(
+          ({ source, seconds }) =>
+            source === screen.container.querySelector("iframe")?.contentWindow && seconds === 12.5,
+        ),
+      ).toBe(true),
+    );
+  });
+
   it("keeps a page on screen until its next revision has loaded", async () => {
     using pages = (() => {
       const urls = ["first", "second", "third"].map((name) =>

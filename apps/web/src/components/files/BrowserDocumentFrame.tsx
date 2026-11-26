@@ -236,10 +236,21 @@ function FileDocument(props: {
   // The page reports its scroll position (see FILE_PREVIEW_SCROLL_SCRIPT); the next revision
   // scrolls there before it is uncovered.
   const scroll = useRef<FilePreviewScroll | null>(null);
+  const tileTime = useRef<number | null>(null);
+  const isTile = props.title.endsWith(".tile.html");
   // Two frames let the browser paint the incoming page before it is uncovered.
   const reveal = (revision: FileDocumentRevision) =>
     requestAnimationFrame(() => requestAnimationFrame(() => setFrames(showRevision(revision))));
   const onFrameMessage = useEffectEvent((event: MessageEvent) => {
+    if (
+      isTile &&
+      event.source === shownFrame.current?.contentWindow &&
+      event.data?.type === "robot-code.tile.cursor" &&
+      Number.isFinite(event.data.seconds)
+    ) {
+      tileTime.current = event.data.seconds;
+      return;
+    }
     const position = readFilePreviewScroll(event.data);
     if (position !== undefined) {
       if (event.source === shownFrame.current?.contentWindow) scroll.current = position;
@@ -281,6 +292,12 @@ function FileDocument(props: {
             onLoad={
               revision === next
                 ? (event) => {
+                    if (isTile && tileTime.current !== null) {
+                      event.currentTarget.contentWindow?.postMessage(
+                        { type: "robot-code.tile.restore", seconds: tileTime.current },
+                        "*",
+                      );
+                    }
                     if (scroll.current === null) {
                       reveal(revision);
                       return;

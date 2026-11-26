@@ -1,7 +1,7 @@
-# T3 Code Mobile
+# Robot Code Mobile
 
 > [!NOTE]
-> To install the released app from the App Store or Google Play, see [Mobile app](../../docs/user/install.md#mobile-app). This guide covers building it from source.
+> Build the Robot Code mobile client from this checkout. The store listings linked in upstream documentation distribute T3 Code.
 
 ## Quickstart
 
@@ -10,15 +10,17 @@
 
 This app has three variants:
 
-- `development`: Expo dev client, installable side-by-side as `T3 Code Dev`
-- `preview`: persistent internal preview build, installable side-by-side as `T3 Code Preview`
-- `production`: store/release build as `T3 Code`
+- `development`: Expo dev client, installable side-by-side as `Robot Code Dev`
+- `preview`: persistent internal preview build, installable side-by-side as `Robot Code Preview`
+- `production`: store/release build as `Robot Code`
 
 Run commands from `apps/mobile`.
 
 T3 Connect is optional and disabled in a fresh clone. Public configuration belongs in the
 repository-root `.env` or `.env.local`, not an `apps/mobile/.env` file. See
 [`../../.env.example`](../../.env.example).
+
+For signed fork builds, set `ROBOTCODE_APPLE_TEAM_ID`, `ROBOTCODE_EXPO_OWNER`, and `ROBOTCODE_EAS_PROJECT_ID` to your own identifiers. For universal links or passkeys, set `ROBOTCODE_APP_LINK_HOST` and `ROBOTCODE_PASSKEY_HOST` to domains you control and publish their association files with your signing identities.
 
 ## Development
 

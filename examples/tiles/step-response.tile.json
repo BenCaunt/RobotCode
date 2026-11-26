@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "title": "Actuator step response",
+  "subtitle": "Simulated bench \u00b7 0.6 rad calf step",
+  "initialTime": 4.932,
+  "rows": [
+    [
+      {
+        "kind": "plot",
+        "title": "Measured angle",
+        "source": "position"
+      },
+      {
+        "kind": "plot",
+        "title": "Angular speed",
+        "source": "speed"
+      }
+    ],
+    [
+      {
+        "kind": "map",
+        "title": "Target vs. measured angle",
+        "source": "response"
+      },
+      {
+        "kind": "plot",
+        "title": "Target angle",
+        "source": "target"
+      }
+    ]
+  ],
+  "sources": "step-response.sources.json"
+}

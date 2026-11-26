@@ -233,6 +233,8 @@ it("opens a linked Linear issue from an inactive thread's sidebar badge", async 
   });
   __setClientSettingsForTests({
     ...DEFAULT_CLIENT_SETTINGS,
+    boringSidebarEnabled: true,
+    boringSidebarMultilineRows: true,
     onboardingCompletedAt: "2026-01-01T00:00:00.000Z",
   });
   await page.viewport(1400, 900);

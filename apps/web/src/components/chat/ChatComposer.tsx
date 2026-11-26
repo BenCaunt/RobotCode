@@ -2109,7 +2109,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         }
         return;
       }
-      if (item.command === "side" || item.command === "btw") {
+      if (item.command === "progress" || item.command === "side" || item.command === "btw") {
         if (props.sideChatDisabledReason) return;
         const applied = applyPromptReplacement(
           trigger.rangeStart,

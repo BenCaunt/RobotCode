@@ -105,7 +105,11 @@ import {
   useComposerDraft,
   useComposerDraftSettings,
 } from "./use-composer-drafts";
-import { isClearComposerCommand, parseSideChatCommand } from "@t3tools/shared/composerTrigger";
+import {
+  isClearComposerCommand,
+  parseSideChatCommand,
+  progressSnapshot,
+} from "@t3tools/shared/composerTrigger";
 import { orchestrationV2WorktreePending } from "@t3tools/shared/orchestrationV2ThreadError";
 import {
   compactionBlocksSteering,
@@ -139,7 +143,7 @@ import {
 import { useThreadSelection } from "./use-thread-selection";
 import { enqueueThreadOutboxMessage } from "./thread-outbox";
 import { dispatchingQueuedMessageIdsAtom, useThreadOutboxMessages } from "./use-thread-outbox";
-import { threadEnvironment } from "./threads";
+import { environmentThreadShells, threadEnvironment } from "./threads";
 import { useAtomCommand } from "./use-atom-command";
 
 const EMPTY_QUEUE_WORKFLOW_ATOM = Atom.make<null>(null).pipe(
@@ -703,9 +707,23 @@ export function useThreadComposerState(input: {
     // A redirect's text answers its approval, so `/side` there is that text, not the command.
     const sideChatCommand = beforeDispatch === undefined ? parseSideChatCommand(text) : null;
     if (sideChatCommand) {
+      const summary = sideChatCommand.progress
+        ? progressSnapshot(
+            thread.id,
+            new Date().toISOString(),
+            appAtomRegistry.get(
+              environmentThreadShells.sideChatsAtom({
+                environmentId: thread.environmentId,
+                threadId: thread.id,
+              }),
+            ),
+            sideChatCommand.prompt,
+          )
+        : null;
       if (sideChatUnavailableReason !== null) {
         Dialog.alert(m(msg("Side chat not started")), sideChatUnavailableReason);
       } else if (
+        summary === null &&
         sideChatCommand.prompt.length === 0 &&
         attachments.length === 0 &&
         (draft.context?.records.length ?? 0) === 0
@@ -740,13 +758,16 @@ export function useThreadComposerState(input: {
             {
               ...serializeComposerMessageForServer(
                 restoreAttachmentOnlyBootstrapPrompt(
-                  sideChatCommand.prompt,
+                  summary?.prompt ?? sideChatCommand.prompt,
                   prepared.attachments.length > 0,
                 ),
                 uploadedComposerContext(draft.context, attachments, prepared.attachments),
               ),
               attachments: prepared.attachments,
-              titleSeed: deriveThreadTitleSeed({ text: sideChatCommand.prompt, attachments }, m),
+              ...(summary && { sideChatTitle: summary.title }),
+              titleSeed:
+                summary?.title ??
+                deriveThreadTitleSeed({ text: sideChatCommand.prompt, attachments }, m),
             },
             {
               runtimeMode: draft.runtimeMode ?? thread.runtimeMode,
@@ -960,7 +981,7 @@ export function useThreadComposerState(input: {
     if (serverConfig.environment.capabilities.sideChats !== true) {
       return resolve(
         msg("Update this environment's {product} server to use side chats.", {
-          product: "T3 Code",
+          product: "Robot Code",
         }),
       );
     }

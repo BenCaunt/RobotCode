@@ -137,6 +137,7 @@ export function buildComposerSlashCommandItems(
   if (!input.atMessageStart) return items;
   if (input.offersSideChat) {
     for (const [command, description] of [
+      ["progress", resolve(msg("Summarize session progress and agent results"))],
       ["side", resolve(msg("Ask a side question in a new side chat"))],
       ["btw", resolve(msg("Same as /side"))],
     ] as const) {
@@ -161,6 +162,7 @@ export function buildComposerSlashCommandItems(
   }
   for (const command of input.selectedProviderStatus?.slashCommands ?? []) {
     if (!command.name.toLowerCase().includes(query)) continue;
+    if (command.name === "progress" && input.offersSideChat) continue;
     if (command.name === "clear" && input.offersFreshSession) continue;
     if (command.name === "compact" && !input.hasCompactableConversation) continue;
     if (command.name === USAGE_LIMITS_COMMAND.name && input.offersUsageLimits && !input.hasThread) {

@@ -1,10 +1,11 @@
 # Managed robotics processes
 
-Open **Settings → Projects** on desktop or mobile and expand **Robotics** for
-the environment that runs the project. **Processes** lists that project's jobs
+Open your project in the sidebar (the thread list on mobile), then choose **Robotics**. **Processes** lists that project's jobs
 across conversations. You can start an approved definition, stream logs, stop
 a job, or request a restart. An agent in the same project can discover jobs
 and their definitions with the `t3_robotics_job_list` MCP tool.
+
+The process list shows the latest stopped run for each definition alongside active, failed, and unknown runs. Open **Archived runs** to read the available logs from earlier stopped runs. Choose **Current runs** to return.
 
 ## Approve a process on the execution host
 

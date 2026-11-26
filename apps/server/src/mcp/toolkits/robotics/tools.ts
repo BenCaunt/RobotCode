@@ -43,7 +43,11 @@ const JobList = Tool.make("t3_robotics_job_list", {
     before: fields.before,
     limit: fields.limit,
   })),
-  success: Schema.Struct({ ...RoboticsJobList.fields, definitions: RoboticsJobDefinitions }),
+  success: Schema.Struct({
+    jobs: RoboticsJobList.fields.jobs,
+    nextBefore: RoboticsJobList.fields.nextBefore,
+    definitions: RoboticsJobDefinitions,
+  }),
 })
   .annotate(Tool.Readonly, true)
   .annotate(McpSchema.EnabledWhen, McpInvocationContext.hiddenFromOutsideClients);
@@ -89,7 +93,7 @@ const JobManage = Tool.make("t3_robotics_job_manage", {
 const RobotList = Tool.make("t3_robotics_robot_list", {
   ...shared,
   description:
-    "List configured robots and their last readiness probe state in this conversation's project. Set robotId to read a single robot.",
+    "List configured robots, their last readiness probe state and their liveView stream in this conversation's project. Set robotId to read a single robot.",
   parameters: Schema.Struct({ robotId: Schema.optionalKey(RobotSessionInput.fields.robotId) }),
   success: RobotListResult,
 })

@@ -260,6 +260,7 @@ interface ChatMarkdownProps {
   onImageExpand?: ((preview: ExpandedImagePreview) => void) | undefined;
   /** Keep one object per configuration (a module constant): it keys the shared parse cache. */
   extensions?: MarkdownExtensions | undefined;
+  renderWorkspaceImage?: ((path: string, alt: string) => ReactNode) | undefined;
   renderContextReference?: ((reference: ChatMarkdownContextReference) => ReactNode) | undefined;
   /** Loads media a source control host keeps behind a credential through the server, which holds
       `cwd`'s; without it a private repository's uploads load unauthenticated and 404. */
@@ -587,6 +588,7 @@ function useChatMarkdownState(
     imageBaseDir,
     workspaceMutationId,
     onImageExpand,
+    renderWorkspaceImage,
     renderContextReference,
     headingLevelOffset = 0,
     sourceControlMedia = false,
@@ -1090,6 +1092,7 @@ function useChatMarkdownState(
     fileLinkChip,
     sourceControlMedia,
     sourceControlMediaRepository,
+    renderWorkspaceImage,
     renderContextReference,
     headingLevelOffset,
     imageBaseDir,
@@ -1645,6 +1648,7 @@ const CHAT_MARKDOWN_COMPONENTS = {
       imageBaseDir,
       threadRef,
       workspaceMutationId,
+      renderWorkspaceImage,
       renderContextReference,
       fileLinkChip,
       resolvedTheme,
@@ -1781,6 +1785,8 @@ const CHAT_MARKDOWN_COMPONENTS = {
         />
       );
     }
+    if (renderWorkspaceImage && imageSource._tag === "WorkspaceFile" && kind === "image")
+      return renderWorkspaceImage(imageSource.path, altText);
     const hostImageUrl = use(HostImageUrlContext);
     if (imageSource._tag === "WorkspaceFile" && kind === "image" && hostImageUrl !== null) {
       const hostSrc = hostImageUrl(imageSource.path);

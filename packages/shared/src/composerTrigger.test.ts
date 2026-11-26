@@ -5,6 +5,7 @@ import { assert, describe, expect, it } from "vite-plus/test";
 import {
   detectComposerTrigger,
   parseSideChatCommand,
+  progressSnapshot,
   serializeComposerFileLink,
 } from "./composerTrigger.ts";
 import { resolveMarkdownFileLinkTarget } from "./markdownLinks.ts";
@@ -186,8 +187,28 @@ describe("parseSideChatCommand", () => {
   });
 
   it("ignores other commands and inline mentions", () => {
+    expect(parseSideChatCommand("/progress compare terrain")).toEqual({
+      progress: true,
+      prompt: "compare terrain",
+    });
+    expect(parseSideChatCommand("/progress")).toEqual({ progress: true, prompt: "" });
+    expect(parseSideChatCommand("/progressive")).toBeNull();
     expect(parseSideChatCommand("/sidebar")).toBeNull();
     expect(parseSideChatCommand("/btwx")).toBeNull();
     expect(parseSideChatCommand("ask /side later")).toBeNull();
   });
+});
+
+it("compares progress with the newest earlier snapshot of this parent", () => {
+  const cutoff = "2026-01-04T00:00:00.000Z";
+  const chats = ["01", "05", "03", "02"].map((day) => {
+    const createdAt = `2026-01-${day}T00:00:00.000Z`;
+    return { id: `thread-${day}`, title: `Progress snapshot · ${createdAt}`, createdAt };
+  });
+  chats.push({ id: "unrelated", title: "Side chat", createdAt: cutoff });
+  const snapshot = progressSnapshot("parent", cutoff, chats, "terrain");
+  expect(snapshot.prompt).toContain("previous snapshot in thread thread-03");
+  expect(snapshot.prompt).toContain("User focus: terrain");
+  expect(snapshot.title).toBe(`Progress snapshot · ${cutoff}`);
+  expect(progressSnapshot("parent", cutoff, [], "").prompt).not.toContain("previous snapshot");
 });

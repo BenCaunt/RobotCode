@@ -358,6 +358,12 @@ export const DesktopCliCommandStateSchema = Schema.Struct({
 });
 export type DesktopCliCommandState = typeof DesktopCliCommandStateSchema.Type;
 
+/** A newer build of this app staged on this machine, or null when there is none. */
+export const DesktopLocalBuildStateSchema = Schema.NullOr(
+  Schema.Struct({ builtAt: Schema.String }),
+);
+export type DesktopLocalBuildState = typeof DesktopLocalBuildStateSchema.Type;
+
 export interface DesktopUpdateActionResult {
   accepted: boolean;
   completed: boolean;
@@ -1231,6 +1237,12 @@ export interface DesktopBridge {
   /** With a version, installs only that downloaded build. */
   installUpdate: (expectedVersion?: string) => Promise<DesktopUpdateActionResult>;
   onUpdateState: (listener: (state: DesktopUpdateState) => void) => () => void;
+  /** Absent on desktop builds that predate staged local builds. */
+  localBuild?: {
+    getState: () => Promise<DesktopLocalBuildState>;
+    /** Quits, swaps in the staged build, and reopens the app. */
+    install: () => Promise<DesktopLocalBuildState>;
+  };
   cliCommand: {
     getState: () => Promise<DesktopCliCommandState>;
     install: () => Promise<DesktopCliCommandState>;

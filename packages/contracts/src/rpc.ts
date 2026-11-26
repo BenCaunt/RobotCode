@@ -298,6 +298,7 @@ import {
   ProjectCreateFromThreadInput,
   ProjectCreateFromThreadResult,
   ProjectEnsureScratchResult,
+  ProjectEvaluationHistoryResult,
   ProjectListEntriesError,
   ProjectListEntriesInput,
   ProjectListEntriesResult,
@@ -489,6 +490,7 @@ import { Project, ProjectMutation, ProjectMutationError } from "./project.ts";
 
 export const WS_METHODS = {
   ...ROBOTICS_WS_METHODS,
+  projectsEvaluationHistory: "projects.evaluationHistory",
   projectsListEntries: "projects.listEntries",
   projectsListIgnoredFiles: "projects.listIgnoredFiles",
   projectsReadFile: "projects.readFile",
@@ -1642,6 +1644,12 @@ const WsProjectsSearchContentsRpc = Rpc.make(WS_METHODS.projectsSearchContents, 
   error: Schema.Union([ProjectSearchContentsError, EnvironmentAuthorizationError]),
 });
 
+const WsProjectsEvaluationHistoryRpc = Rpc.make(WS_METHODS.projectsEvaluationHistory, {
+  payload: Schema.Struct({ cwd: TrimmedNonEmptyString }),
+  success: ProjectEvaluationHistoryResult,
+  error: Schema.Union([ProjectListEntriesError, EnvironmentAuthorizationError]),
+});
+
 const WsProjectsListEntriesRpc = Rpc.make(WS_METHODS.projectsListEntries, {
   payload: ProjectListEntriesInput,
   success: ProjectListEntriesResult,
@@ -2629,6 +2637,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsProjectCloneCancelRpc,
   WsProjectCloneRetryRpc,
   WsSubscribeProjectClonesRpc,
+  WsProjectsEvaluationHistoryRpc,
   WsProjectsListEntriesRpc,
   WsProjectsListIgnoredFilesRpc,
   WsProjectsReadFileRpc,

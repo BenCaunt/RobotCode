@@ -10,7 +10,7 @@ import { createEnvironmentRpcCommand } from "@t3tools/client-runtime/state/runti
 import { workspaceRelativeFilePath } from "@t3tools/shared/path";
 import type { WebViewer } from "@rerun-io/web-viewer";
 import { T, useGT } from "gt-react";
-import { type RefObject, useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import { useAssetUrlRefresh, useAssetUrlState } from "~/assets/assetUrls";
 import { useComposerHandleContext } from "~/composerHandleContext";
@@ -24,6 +24,7 @@ import { useAtomCommand } from "~/state/use-atom-command";
 
 import { workspaceAssetResource } from "./filePreviewMode";
 import { FileSurfaceFailure, FileSurfaceLoading } from "./fileSurfaceChrome";
+import { RerunCanvas } from "./RerunCanvas";
 import {
   captureRerunAnnotationLocation,
   formatRerunAnnotation,
@@ -32,7 +33,6 @@ import {
 } from "./rerunAnnotation";
 
 const MAX_COMMENT_LENGTH = 4_000;
-const loadViewer = () => import("@rerun-io/web-viewer");
 const createAnnotation = createEnvironmentRpcCommand(connectionAtomRuntime, {
   label: "environment-data:robotics:annotation:create",
   tag: WS_METHODS.roboticsAnnotationCreate,
@@ -299,58 +299,4 @@ function RerunPreview(props: {
       ) : null}
     </div>
   );
-}
-
-function RerunCanvas(props: {
-  readonly sourceUrl: string;
-  readonly onState: (state: "loading" | "open" | "failed") => void;
-  readonly viewerRef: RefObject<WebViewer | null>;
-}) {
-  const parentRef = useRef<HTMLDivElement>(null);
-  const { sourceUrl, onState, viewerRef } = props;
-
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- binds the external viewer to this mounted canvas
-  useEffect(() => {
-    const parent = parentRef.current;
-    if (parent === null) return;
-    let active = true;
-    let stop: (() => void) | undefined;
-    void loadViewer()
-      .then(async ({ WebViewer }) => {
-        if (!active) return;
-        const viewer = new WebViewer();
-        const unsubscribe = viewer.once("recording_open", () => {
-          if (active) onState("open");
-        });
-        stop = () => {
-          viewerRef.current = null;
-          unsubscribe();
-          viewer.stop();
-        };
-        await viewer.start(null, parent, {
-          checkForUpdatesOnStartup: false,
-          hideWelcomeScreen: true,
-          memoryLimit: "512MB",
-          width: "100%",
-          height: "100%",
-        });
-        if (!active) return;
-        viewerRef.current = viewer;
-        onState("loading");
-        // The URL loader decodes the HTTP response incrementally. The JS byte channel loads a complete RRD per call.
-        const { storeIds, loading } = await viewer.open(sourceUrl);
-        if (!active) return;
-        if (storeIds.length > 0) onState("open");
-        else if (loading.length === 0) onState("failed");
-      })
-      .catch(() => {
-        if (active) onState("failed");
-      });
-    return () => {
-      active = false;
-      stop?.();
-    };
-  }, [sourceUrl, onState, viewerRef]);
-
-  return <div ref={parentRef} className="relative min-h-0 flex-1 overflow-hidden" />;
 }

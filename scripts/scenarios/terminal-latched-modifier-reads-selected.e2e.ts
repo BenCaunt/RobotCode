@@ -17,7 +17,7 @@ test(
       environmentId(`http://${MOBILE.host}:${MOBILE.serverPort}`),
     );
     await device.openLink(`t3code-dev://threads/${environment}/${threadId}/terminal`, {
-      app: "com.t3tools.t3code.dev",
+      app: "io.github.bencaunt.robotcode.dev",
     });
     await device.alert("accept").catch(() => {});
 

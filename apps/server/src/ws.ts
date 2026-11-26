@@ -228,6 +228,7 @@ import {
 import { parseBase64DataUrl } from "./imageMime.ts";
 import { deletePendingAttachment, issueAttachmentUploadUrl } from "./assets/AttachmentUpload.ts";
 import * as PortScanner from "./preview/PortScanner.ts";
+import { listEvaluationHistory } from "./workspace/EvaluationHistory.ts";
 import * as WorkspaceEntries from "./workspace/WorkspaceEntries.ts";
 import * as WorkspaceFolders from "./workspace/WorkspaceFolders.ts";
 import * as LayoutCommandApprovalWrites from "./workspace/LayoutCommandApprovalWrites.ts";
@@ -3126,6 +3127,17 @@ export const layerWsRpc = (
                   cwd: input.cwd,
                   queryLength: input.query.length,
                   limit: input.limit,
+                  ...projectEntriesFailureContext(cause),
+                  cause,
+                }),
+            ),
+          ),
+        [WS_METHODS.projectsEvaluationHistory]: ({ cwd }) =>
+          listEvaluationHistory(cwd, workspaceEntries, workspaceFileSystem).pipe(
+            Effect.mapError(
+              (cause) =>
+                new ProjectListEntriesError({
+                  cwd,
                   ...projectEntriesFailureContext(cause),
                   cause,
                 }),

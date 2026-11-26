@@ -151,6 +151,23 @@ it.live("reuses project jobs, protects claims, and recovers state and logs after
       expect(restarted.jobId).not.toBe(viewer.jobId);
       const sameRestart = yield* jobs.restart({ ...viewer, idempotencyKey: "restart-viewer" });
       expect(sameRestart.jobId).toBe(restarted.jobId);
+
+      const current = { projectId: firstProject, view: "current" } as const;
+      const archive = { projectId: firstProject, view: "archived" } as const;
+      expect((yield* jobs.list(current)).jobs.map((job) => job.jobId)).toEqual([
+        restarted.jobId,
+        viewer.jobId,
+        bridge.jobId,
+      ]);
+      expect((yield* jobs.list(archive)).jobs).toEqual([]);
+      yield* jobs.stop(restarted);
+      const latest = yield* jobs.list({ ...current, limit: 1 });
+      expect(latest.jobs.map((job) => job.jobId)).toEqual([restarted.jobId]);
+      expect(latest.hasArchived).toBe(true);
+      const older = yield* jobs.list({ ...current, before: latest.nextBefore! });
+      expect(older.jobs.map((job) => job.jobId)).toEqual([bridge.jobId]);
+      expect((yield* jobs.list(archive)).jobs.map((job) => job.jobId)).toEqual([viewer.jobId]);
+      expect((yield* jobs.list({ projectId: firstProject })).jobs).toHaveLength(3);
     }).pipe(Effect.provide(layer), Effect.scoped);
   }).pipe(Effect.provide(NodeServices.layer), Effect.scoped),
 );

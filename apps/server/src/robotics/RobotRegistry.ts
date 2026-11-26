@@ -1,4 +1,5 @@
 import {
+  isActiveRobotSession,
   RobotRegistryErrorReason,
   type RobotListInput,
   type RobotSessionInput,
@@ -13,6 +14,7 @@ import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Path from "effect/Path";
+import * as Schedule from "effect/Schedule";
 import * as Schema from "effect/Schema";
 import * as Scope from "effect/Scope";
 import * as Semaphore from "effect/Semaphore";
@@ -61,7 +63,8 @@ interface ActiveSession {
 
 const CONFIG_LIMIT = 256 * 1024;
 const INSTRUCTIONS_LIMIT = 64 * 1024;
-const PROBE_TIMEOUT = "3 seconds";
+const HTTP_PROBE_TIMEOUT = "3 seconds";
+const ADAPTER_PROBE_TIMEOUT = "15 seconds";
 const PROBE_INTERVAL = "5 seconds";
 const SETUP_TIMEOUT = "60 seconds";
 const nowIso = Effect.map(DateTime.now, DateTime.formatIso);
@@ -124,7 +127,19 @@ const make = Effect.gen(function* () {
     );
     return document.robots;
   });
-  const registrations = yield* Effect.cached(loadRegistrations());
+  // Read on every call so an edited file applies without a server restart.
+  const registrations = Effect.tap(loadRegistrations(), (robots) =>
+    Effect.forEach(
+      [...sessions].filter(([robotId]) => !robots.some((robot) => robot.robotId === robotId)),
+      ([robotId, active]) =>
+        Effect.gen(function* () {
+          sessions.delete(robotId);
+          connectionLocks.delete(robotId);
+          if (active.fiber) yield* Fiber.interrupt(active.fiber);
+        }),
+      { discard: true },
+    ),
+  );
 
   const findRobot = Effect.fn("RobotRegistry.findRobot")(function* (input: RobotSessionInput) {
     const robots = yield* registrations;
@@ -141,6 +156,7 @@ const make = Effect.gen(function* () {
     displayName: robot.displayName,
     knownHosts: robot.knownHosts,
     initPath: robot.initPath ?? null,
+    ...(robot.liveView ? { liveView: robot.liveView } : {}),
     session: sessions.get(robot.robotId)?.snapshot ?? null,
   });
 
@@ -176,13 +192,21 @@ const make = Effect.gen(function* () {
     active: ActiveSession,
     robot: RobotRegistration,
   ) {
-    const result = yield* setup
+    const ready = yield* setup
       .probe(robot)
       .pipe(
-        Effect.timeoutOption(PROBE_TIMEOUT),
-        Effect.catchTags({ RobotSetupError: () => Effect.succeed(Option.none<boolean>()) }),
+        Effect.timeoutOption(
+          robot.readiness && "adapter" in robot.readiness
+            ? ADAPTER_PROBE_TIMEOUT
+            : HTTP_PROBE_TIMEOUT,
+        ),
+        Effect.map(Option.getOrElse(() => false)),
+        Effect.catchTags({ RobotSetupError: () => Effect.succeed(false) }),
       );
-    const ready = Option.getOrElse(result, () => false);
+    if (ready === "unconfigured") {
+      yield* update(active, { state: "unverified", phase: "setupComplete", reason: null });
+      return false;
+    }
     yield* update(
       active,
       {
@@ -192,6 +216,7 @@ const make = Effect.gen(function* () {
       },
       ready,
     );
+    return true;
   });
 
   const runSession = Effect.fn("RobotRegistry.runSession")(
@@ -218,8 +243,9 @@ const make = Effect.gen(function* () {
       }
 
       yield* update(active, { phase: "checkingReadiness" });
-      yield* verify(active, robot);
-      return yield* verify(active, robot).pipe(Effect.delay(PROBE_INTERVAL), Effect.forever);
+      yield* verify(active, robot).pipe(
+        Effect.repeat({ schedule: Schedule.spaced(PROBE_INTERVAL), while: (monitor) => monitor }),
+      );
     },
     (effect, active) =>
       effect.pipe(
@@ -245,7 +271,7 @@ const make = Effect.gen(function* () {
       const robot = yield* findRobot(input);
       return yield* Effect.gen(function* () {
         const existing = sessions.get(robot.robotId);
-        if (existing && ["connecting", "ready", "degraded"].includes(existing.snapshot.state)) {
+        if (existing && isActiveRobotSession(existing.snapshot)) {
           return summarize(robot);
         }
 

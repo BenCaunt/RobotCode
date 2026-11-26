@@ -1,5 +1,7 @@
 # Contributing
 
+For Robot Code changes and issues, use the [fork repository](https://github.com/BenCaunt/RobotCode). The following guidance describes contributions to the upstream T3 Code project.
+
 T3 Code is a project built by and for the community of agentic devs pushing the absolute limits of
 modern AI tools.
 

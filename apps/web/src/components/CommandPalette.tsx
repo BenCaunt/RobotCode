@@ -8,6 +8,7 @@ import { visibleThreadPullRequests } from "@t3tools/shared/threadPullRequests";
 import {
   scopedThreadKey,
   scopeProjectRef,
+  scopedProjectKey,
   scopeThreadRef,
 } from "@t3tools/client-runtime/environment";
 import {
@@ -86,6 +87,8 @@ import {
   TextSearchIcon,
   UserPlusIcon,
   WorkflowIcon,
+  BotIcon,
+  ChartLineIcon,
 } from "lucide-react";
 import { openThreadFind } from "./chat/threadFindStore";
 import { dispatchPreviewAction } from "./preview/previewActionBus";
@@ -783,6 +786,20 @@ function OpenCommandPaletteDialog(props: {
     currentProjectEnvironmentId,
     currentProjectId,
   );
+  const routeToolProject = useLocation({
+    select: ({ pathname, search }) =>
+      (pathname === "/robotics" || pathname === "/evaluations") &&
+      typeof search.project === "string"
+        ? search.project
+        : undefined,
+  });
+  const toolProject =
+    routeToolProject ??
+    (currentProject &&
+      scopedProjectKey({
+        environmentId: currentProject.environmentId,
+        projectId: currentProject.id,
+      }));
   const currentProjectCwd = currentProject?.workspaceRoot ?? null;
   const currentThreadActionItems = useCommandPaletteThreadActions({
     threadRef: activeThread ? scopeThreadRef(activeThread.environmentId, activeThread.id) : null,
@@ -1432,7 +1449,7 @@ function OpenCommandPaletteDialog(props: {
       value: "action:triage",
       searchTerms: ["triage", "bug", "issue", "report", "broken", "debug", "help", "support"],
       title: gt("Triage an issue"),
-      description: gt("An agent investigates a T3 Code problem and helps file an issue"),
+      description: gt("An agent investigates a Robot Code problem and helps file an issue"),
       icon: <BugIcon className={ITEM_ICON_CLASS} />,
       run: () => startTriage(triageEnvironmentId),
     });
@@ -1772,7 +1789,7 @@ function OpenCommandPaletteDialog(props: {
       "openclaw",
       "hermes",
     ],
-    title: gt("Use T3 Code in another app (MCP)"),
+    title: gt("Use Robot Code in another app (MCP)"),
     icon: <PlugIcon className={ITEM_ICON_CLASS} />,
     run: async () => {
       openUseInAnotherApp(
@@ -1781,6 +1798,33 @@ function OpenCommandPaletteDialog(props: {
             ? paletteRouteTarget.threadRef.environmentId
             : null),
       );
+    },
+  });
+
+  actionItems.push({
+    kind: "action",
+    value: "action:robotics",
+    searchTerms: ["robotics", "robots", "processes", "bridges", "logs"],
+    title: gt("Robotics"),
+    icon: <BotIcon className={ITEM_ICON_CLASS} />,
+    run: async () => {
+      await navigate({
+        to: "/robotics",
+        search: toolProject ? { project: toolProject } : {},
+      });
+    },
+  });
+  actionItems.push({
+    kind: "action",
+    value: "action:evaluations",
+    searchTerms: ["evaluations", "results", "experiments", "provenance"],
+    title: gt("Evaluations"),
+    icon: <ChartLineIcon className={ITEM_ICON_CLASS} />,
+    run: async () => {
+      await navigate({
+        to: "/evaluations",
+        search: toolProject ? { project: toolProject } : {},
+      });
     },
   });
 

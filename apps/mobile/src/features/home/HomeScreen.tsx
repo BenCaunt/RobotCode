@@ -1,3 +1,4 @@
+import { ProjectNavigationRows } from "./ProjectNavigationRows";
 import { useGT, useMessages } from "gt-react-native";
 
 import { useContentTopInset } from "../../components/ui/useBarInset";
@@ -630,7 +631,24 @@ export function HomeScreen(props: HomeScreenProps) {
         "this environment");
   const emptyState = deriveHomeEmptyState(props.catalogState, props.projects.length, m);
 
-  if (!hasAnyThreads) {
+  const navigationScopes = pickableProjectGroups(
+    sortHomeProjectScopes({
+      scopes: projectScopes,
+      threads: props.threads,
+      pendingTasks: props.pendingTasks,
+      projectSortOrder: props.projectSortOrder,
+    }),
+  );
+  const projectLinks =
+    navigationScopes.length > 0 && !hasSearchQuery ? (
+      <ProjectNavigationRows
+        scopes={navigationScopes}
+        selected={v2ScopedProjectGroup}
+        environments={props.environments}
+        onProjectChange={props.onProjectChange}
+      />
+    ) : null;
+  if (!hasAnyThreads && !projectLinks) {
     return (
       <View className={containerClassName}>
         <ScreenContent surface={sidebarSurface ? "drawer" : "screen"}>
@@ -687,14 +705,7 @@ export function HomeScreen(props: HomeScreenProps) {
         <ThreadListFilters
           gutter={sidebarSurface ? 8 : 0}
           environments={props.environments}
-          projects={pickableProjectGroups(
-            sortHomeProjectScopes({
-              scopes: projectScopes,
-              threads: props.threads,
-              pendingTasks: [],
-              projectSortOrder: "updated_at",
-            }),
-          ).map((scope) => ({
+          projects={navigationScopes.map((scope) => ({
             key: scope.key,
             label: scope.title,
           }))}
@@ -704,6 +715,7 @@ export function HomeScreen(props: HomeScreenProps) {
           onProjectChange={props.onProjectChange}
         />
       ) : null}
+      {projectLinks}
     </>
   );
 
@@ -748,7 +760,7 @@ export function HomeScreen(props: HomeScreenProps) {
       />
     );
 
-  if (Platform.OS === "android" && threadListV2Items.length === 0) {
+  if (Platform.OS === "android" && threadListV2Items.length === 0 && !projectLinks) {
     return (
       <ScreenContent surface="screen">
         <View

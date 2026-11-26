@@ -1,4 +1,5 @@
 import {
+  DesktopLocalBuildStateSchema,
   DesktopUpdateActionResultSchema,
   DesktopUpdateChannelSchema,
   DesktopUpdateCheckResultSchema,
@@ -7,6 +8,7 @@ import {
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 
+import * as DesktopLocalBuild from "../../updates/DesktopLocalBuild.ts";
 import * as DesktopUpdates from "../../updates/DesktopUpdates.ts";
 import * as IpcChannels from "../channels.ts";
 import * as DesktopIpc from "../DesktopIpc.ts";
@@ -64,5 +66,23 @@ export const checkForUpdate = DesktopIpc.makeIpcMethod({
   handler: Effect.fn("desktop.ipc.updates.check")(function* () {
     const updates = yield* DesktopUpdates.DesktopUpdates;
     return yield* updates.check("web-ui");
+  }),
+});
+
+export const getLocalBuildState = DesktopIpc.makeIpcMethod({
+  channel: IpcChannels.LOCAL_BUILD_GET_STATE_CHANNEL,
+  payload: Schema.Void,
+  result: DesktopLocalBuildStateSchema,
+  handler: Effect.fn("desktop.ipc.localBuild.getState")(function* () {
+    return yield* (yield* DesktopLocalBuild.DesktopLocalBuild).state;
+  }),
+});
+
+export const installLocalBuild = DesktopIpc.makeIpcMethod({
+  channel: IpcChannels.LOCAL_BUILD_INSTALL_CHANNEL,
+  payload: Schema.Void,
+  result: DesktopLocalBuildStateSchema,
+  handler: Effect.fn("desktop.ipc.localBuild.install")(function* () {
+    return yield* (yield* DesktopLocalBuild.DesktopLocalBuild).install;
   }),
 });

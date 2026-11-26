@@ -22,11 +22,14 @@ import * as RobotRegistry from "./RobotRegistry.ts";
 import * as RobotSetup from "./RobotSetup.ts";
 
 const input = { projectId: ProjectId.make("robotics-project"), robotId: "kiwi-01" };
-const robot = {
+const registration = {
   ...input,
   displayName: "Kiwi-01",
   knownHosts: ["kiwi-bridge.local"],
   initPath: "kiwi/init.md",
+};
+const robot = {
+  ...registration,
   readiness: { url: "http://kiwi-bridge.local/ready", expectedText: "kiwi-01-ready" },
 };
 const instructions = "Reconcile the Kiwi telemetry bridge.";
@@ -69,7 +72,7 @@ const loopback = Effect.fn("loopback")(function* (handler: NodeHttp.RequestListe
   return `http://127.0.0.1:${address.port}`;
 });
 
-it.effect("reuses a connecting session and checks actual readiness through connectivity loss", () =>
+it.effect("monitors an adapter probe through connectivity loss without HTTP configuration", () =>
   Effect.gen(function* () {
     const enterSetup = yield* Deferred.make<string | null>();
     const finishSetup = yield* Deferred.make<void>();
@@ -88,7 +91,7 @@ it.effect("reuses a connecting session and checks actual readiness through conne
     );
     const registryLayer = RobotRegistry.layerWithSetup.pipe(Layer.provide(setup));
     yield* Effect.gen(function* () {
-      yield* writeRegistry();
+      yield* writeRegistry([registration]);
       const registry = yield* RobotRegistry.RobotRegistry;
 
       const [first, second] = yield* Effect.all(
@@ -128,6 +131,84 @@ it.effect("reuses a connecting session and checks actual readiness through conne
       expect(yield* Ref.get(setupCalls)).toBe(1);
     }).pipe(Effect.provide(registryLayer));
   }).pipe(Effect.provide(configLayer)),
+);
+
+it.effect("keeps a session without a probe unverified until cancelled", () =>
+  Effect.gen(function* () {
+    yield* writeRegistry([{ ...input, displayName: "Direct DDS target", knownHosts: [] }]);
+    const registry = yield* RobotRegistry.RobotRegistry;
+    const first = yield* registry.connect(input);
+    yield* TestClock.adjust("0 seconds");
+    const { session } = yield* registry.inspect(input);
+    expect(session).toMatchObject({
+      sessionId: first.session?.sessionId,
+      state: "unverified",
+      phase: "setupComplete",
+      reason: null,
+      lastReadyAt: null,
+    });
+    yield* TestClock.adjust("30 seconds");
+    expect((yield* registry.connect(input)).session).toEqual(session);
+    expect((yield* registry.cancel(input)).session?.state).toBe("disconnected");
+    expect((yield* registry.connect(input)).session?.sessionId).not.toBe(session?.sessionId);
+  }).pipe(Effect.provide(RobotRegistry.layer.pipe(Layer.provideMerge(configLayer)))),
+);
+
+it.effect("lists a registered live view beside a robot without one", () =>
+  Effect.gen(function* () {
+    const liveView = { url: "rerun+http://127.0.0.1:9876/proxy" };
+    yield* writeRegistry([
+      { ...registration, liveView },
+      { ...registration, robotId: "kiwi-02" },
+    ]);
+    const registry = yield* RobotRegistry.RobotRegistry;
+    const robots = yield* registry.list(input);
+    expect(robots.map((entry) => entry.liveView)).toEqual([liveView, undefined]);
+  }).pipe(Effect.provide(RobotRegistry.layer.pipe(Layer.provideMerge(configLayer)))),
+);
+
+it.effect("applies registration edits without a restart and ends a removed robot's session", () =>
+  Effect.gen(function* () {
+    yield* writeRegistry([registration]);
+    const registry = yield* RobotRegistry.RobotRegistry;
+    expect((yield* registry.connect(input)).session).not.toBeNull();
+
+    const added = { ...registration, robotId: "kiwi-02" };
+    yield* writeRegistry([registration, added]);
+    expect((yield* registry.list(input)).map((entry) => entry.robotId)).toEqual([
+      "kiwi-01",
+      "kiwi-02",
+    ]);
+    expect((yield* registry.inspect(input)).session).not.toBeNull();
+
+    yield* writeRegistry([added]);
+    expect((yield* registry.list(input)).map((entry) => entry.robotId)).toEqual(["kiwi-02"]);
+
+    yield* writeRegistry([registration, added]);
+    expect((yield* registry.inspect(input)).session).toBeNull();
+  }).pipe(Effect.provide(RobotRegistry.layer.pipe(Layer.provideMerge(configLayer)))),
+);
+
+it.effect("rejects a live view that is not a Rerun stream URL", () =>
+  Effect.gen(function* () {
+    yield* writeRegistry([{ ...registration, liveView: { url: "http://127.0.0.1:9090" } }]);
+    const registry = yield* RobotRegistry.RobotRegistry;
+    expect((yield* Effect.flip(registry.list(input))).reason).toBe("invalidRegistry");
+  }).pipe(Effect.provide(RobotRegistry.layer.pipe(Layer.provideMerge(configLayer)))),
+);
+
+it.effect.each(
+  Object.entries({
+    "an incomplete HTTP check": { url: robot.readiness.url },
+    "an adapter outside the installation directory": { adapter: "../go2-ready" },
+    "both an HTTP check and an adapter": { ...robot.readiness, adapter: "go2-ready" },
+  }),
+)("rejects %s on an otherwise valid registration", ([, readiness]) =>
+  Effect.gen(function* () {
+    yield* writeRegistry([{ ...registration, readiness }]);
+    const registry = yield* RobotRegistry.RobotRegistry;
+    expect((yield* Effect.flip(registry.list(input))).reason).toBe("invalidRegistry");
+  }).pipe(Effect.provide(RobotRegistry.layer.pipe(Layer.provideMerge(configLayer)))),
 );
 
 it.effect("interrupts in-flight setup before a new connection may reuse the robot", () =>
@@ -207,10 +288,30 @@ it.live("requires the registered readiness marker and rejects redirects and over
     const redirect = yield* Effect.flip(probe("/redirect"));
     expect(redirect._tag).toBe("RobotSetupError");
     expect(reached).toEqual(["/ready", "/wrong-marker", "/oversized", "/redirect"]);
-  }).pipe(
-    Effect.scoped,
-    Effect.provide(RobotSetup.layer.pipe(Layer.provide(FetchHttpClient.layer))),
-  ),
+  }).pipe(Effect.scoped, Effect.provide(RobotSetup.layer.pipe(Layer.provide(configLayer)))),
+);
+
+it.live("runs a named readiness adapter with the registered target and uses its exit status", () =>
+  Effect.gen(function* () {
+    if ((yield* HostProcess.Platform) === "win32") return;
+    const directory = yield* writeRegistry();
+    const fs = yield* FileSystem.FileSystem;
+    const path = yield* Path.Path;
+    const adapters = path.join(directory, "adapters");
+    yield* fs.makeDirectory(adapters);
+    const executable = path.join(adapters, "dds-fresh");
+    yield* fs.writeFileString(
+      executable,
+      '#!/bin/sh\n[ "$#" = 2 ] && [ "$1" = robotics-project ] && [ "$2" = kiwi-01 ]\n',
+    );
+    yield* fs.chmod(executable, 0o700);
+    const setup = yield* RobotSetup.RobotSetup;
+    const target = { ...registration, readiness: { adapter: "dds-fresh" } };
+    expect(yield* setup.probe(target)).toBe(true);
+    expect(yield* setup.probe({ ...target, robotId: "other" })).toBe(false);
+    yield* fs.remove(executable);
+    expect((yield* Effect.flip(setup.probe(target)))._tag).toBe("RobotSetupError");
+  }).pipe(Effect.provide(RobotSetup.layer.pipe(Layer.provideMerge(configLayer)))),
 );
 
 it.live("reuses the same managed bridge on repeated robot connections", () =>

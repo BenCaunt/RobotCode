@@ -175,8 +175,35 @@ export function isClearComposerCommand(text: string): boolean {
   return /^\/clear\s*$/i.test(text.trim());
 }
 
-/** `/side [prompt]`, or its alias `/btw [prompt]`, as the whole message. */
-export function parseSideChatCommand(text: string): { prompt: string } | null {
+export function parseSideChatCommand(text: string): { prompt: string; progress?: true } | null {
+  const progress = /^\/progress(?:\s+([\s\S]*))?$/i.exec(text.trim());
+  if (progress) return { prompt: progress[1]?.trim() ?? "", progress: true };
   const match = /^\/(?:side|btw)(?:\s+([\s\S]*))?$/i.exec(text.trim());
   return match ? { prompt: match[1]?.trim() ?? "" } : null;
+}
+
+export function progressSnapshot(
+  threadId: string,
+  cutoff: string,
+  sideChats: ReadonlyArray<{ id: string; title: string; createdAt: string }>,
+  focus: string,
+) {
+  const prefix = "Progress snapshot · ";
+  const previous = sideChats
+    .filter((chat) => chat.title.startsWith(prefix) && chat.createdAt <= cutoff)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+  return {
+    title: prefix + cutoff,
+    prompt: [
+      `Summarize progress on parent thread ${threadId} as of ${cutoff}. This is a retrospective. Leave the work and running agents alone.`,
+      "Use t3_thread_list with includeSubagents and pagination to identify descendants by parentThreadId. Exclude side chats (including this summary) from the agent results. Read the parent and each agent descendant with t3_thread_read. Follow native subagent activity and delegated thread references, including linked environments. Use only evidence available by the cutoff. Flag missing history and partial results.",
+      "Lead with the best confirmed result and its baseline, metric, units and test conditions. Give each agent a concise line on what it tried, what happened and how that shaped the search. Cite thread links and relevant runs, evaluations or recordings. Identify remaining uncertainty. When measurements are incomparable, report them separately.",
+      previous &&
+        `Read the previous snapshot in thread ${previous.id}. Lead with what changed since that snapshot.`,
+      "When comparable measurements exist, graph them in run or time order, with axes, units, baseline and source labels. Use the user-facing HTML bridge: html_preview then html_render. For sparse or qualitative evidence, use a concise table or text. If enough evidence supports a projection, distinguish the forecast visually from observations, give its horizon, assumptions and uncertainty, and explain why the trend might change. Never fabricate measurements or confidence intervals.",
+      focus && `User focus: ${focus}`,
+    ]
+      .filter(Boolean)
+      .join("\n\n"),
+  };
 }

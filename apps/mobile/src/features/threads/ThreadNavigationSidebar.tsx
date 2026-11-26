@@ -1,3 +1,4 @@
+import { ProjectNavigationRows } from "../home/ProjectNavigationRows";
 import { useGT, useMessages } from "gt-react-native";
 import { useActiveNewTask } from "../../state/active-new-task";
 import { ThreadUndoNotice } from "../home/ThreadUndoNotice";
@@ -188,14 +189,15 @@ function ThreadNavigationSidebarPane(props: ThreadNavigationSidebarProps) {
       ),
     [projects, options.selectedEnvironmentId, options.projectGroupingMode, messages],
   );
-  const projectFilterOptions = pickableProjectGroups(
+  const navigationScopes = pickableProjectGroups(
     sortHomeProjectScopes({
       scopes: projectScopes,
       threads,
       pendingTasks: [],
       projectSortOrder: "updated_at",
     }),
-  ).map((scope) => ({
+  );
+  const projectFilterOptions = navigationScopes.map((scope) => ({
     key: scope.key,
     label: scope.title,
   }));
@@ -536,7 +538,7 @@ function ThreadNavigationSidebarPane(props: ThreadNavigationSidebarProps) {
   };
   const header = (
     <WorkspaceListHeader
-      accessibilityLabel={gt("{appName}, Threads", { appName: "T3 Code" })}
+      accessibilityLabel={gt("{appName}, Threads", { appName: "Robot Code" })}
       onOpenEnvironments={props.onOpenEnvironmentSettings}
       onOpenSettings={props.onOpenSettings}
       search={{
@@ -570,6 +572,15 @@ function ThreadNavigationSidebarPane(props: ThreadNavigationSidebarProps) {
     !catalogState.isLoadingConnections &&
     !catalogState.hasReadyEnvironment &&
     !catalogState.hasConnectingEnvironment;
+  const projectLinks =
+    navigationScopes.length > 0 && props.searchQuery.trim() === "" ? (
+      <ProjectNavigationRows
+        scopes={navigationScopes}
+        selected={selectedProjectScope}
+        environments={environments}
+        onProjectChange={setSelectedProjectKey}
+      />
+    ) : null;
   const listEmpty = (
     <View>
       <Text
@@ -642,6 +653,7 @@ function ThreadNavigationSidebarPane(props: ThreadNavigationSidebarProps) {
                 scrollEventThrottle={16}
                 showsVerticalScrollIndicator={false}
                 style={styles.threadList}
+                ListHeaderComponent={projectLinks}
                 ListEmptyComponent={listEmpty}
               />
             </GestureDetector>
@@ -666,7 +678,7 @@ function ThreadNavigationSidebarPane(props: ThreadNavigationSidebarProps) {
           overflow: "hidden",
         }}
       >
-        {listItems.length === 0 ? (
+        {listItems.length === 0 && !projectLinks ? (
           <View className="flex-1 items-center justify-center">{listEmpty}</View>
         ) : (
           <SwipeableScrollGateProvider enabled={swipeEnabled}>
@@ -695,6 +707,7 @@ function ThreadNavigationSidebarPane(props: ThreadNavigationSidebarProps) {
                 scrollEventThrottle={16}
                 showsVerticalScrollIndicator={false}
                 style={styles.threadList}
+                ListHeaderComponent={projectLinks}
                 ListEmptyComponent={listEmpty}
               />
             </GestureDetector>

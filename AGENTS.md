@@ -1,4 +1,6 @@
-# T3 Code
+# Robot Code
+
+Robot Code is an independent robotics fork of T3 Code. Use the Robot Code name and inspection robot for fork-facing materials. The following upstream engineering guidance describes the shared architecture and uses upstream terminology.
 
 T3 Code is a minimal GUI for coding agents. A Node WebSocket server wraps provider CLIs and agents (Codex, Claude Code, Cursor, Grok, OpenCode, Antigravity, Kiro, Pi, Muse Code, fx) and serves web, desktop, and mobile clients.
 

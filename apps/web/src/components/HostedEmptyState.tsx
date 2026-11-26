@@ -5,12 +5,12 @@ import { T } from "gt-react";
 import { CheckIcon } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
-import { APP_DISPLAY_NAME, DESKTOP_DOWNLOAD_URL } from "~/branding";
+import { APP_DISPLAY_NAME, SOURCE_BUILD_URL } from "~/branding";
 import { hasCloudPublicConfig } from "~/cloud/publicConfig";
 import { isElectron } from "../env";
 import { isLocalEnvironmentDisabled } from "../localEnvironment";
 import { useRelayEnvironmentDiscovery } from "../state/environments";
-import { InstallT3Commands } from "./InstallT3Commands";
+import { CommandBlock } from "./CommandBlock";
 import { retryClerkLoad, useClerkLoadFailed } from "./clerk/clerkLoadFailure";
 import { useT3ConnectAuthPrompt } from "./clerk/useT3ConnectAuthPrompt";
 import { CloudEnvironmentConnectRows } from "./cloud/CloudEnvironmentConnectList";
@@ -46,7 +46,7 @@ export function HostedEmptyState() {
               ) : cloudEnabled ? (
                 <T>Your agents run on your computer.</T>
               ) : (
-                <T>Your agents run on your computer. Start T3 Code there first.</T>
+                <T>Your agents run on your computer. Start Robot Code there first.</T>
               )}
             </EmptyDescription>
           </EmptyHeader>
@@ -97,7 +97,7 @@ function T3ConnectSteps() {
         )}
       </SetupStep>
       <SetupStep number={2}>
-        <RunOnComputer command="t3 connect" />
+        <RunOnComputer command="node apps/server/src/bin.ts connect" />
         {isSignedIn ? (
           <div className="mt-4 space-y-1.5">
             <CloudEnvironmentConnectRows
@@ -132,7 +132,7 @@ function PairingSteps() {
   return (
     <>
       <SetupStep number={1}>
-        <RunOnComputer command="t3 pair" />
+        <RunOnComputer command="node apps/server/src/bin.ts pair" />
       </SetupStep>
       <SetupStep number={2}>
         <Button render={<Link to="/settings/connections" />} size="sm">
@@ -162,16 +162,16 @@ function RunOnComputer({ command }: { readonly command: string }) {
   return (
     <>
       <p>
-        <T>Run on your computer:</T>
+        <T>Run in your Robot Code checkout:</T>
       </p>
-      <InstallT3Commands command={command} className="mt-2" />
+      <CommandBlock command={command} className="mt-2" />
       <a
         className="mt-2 inline-block text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-        href={DESKTOP_DOWNLOAD_URL}
+        href={SOURCE_BUILD_URL}
         target="_blank"
         rel="noreferrer noopener"
       >
-        <T>Or download the desktop app</T>
+        <T>Build Robot Code from source</T>
       </a>
     </>
   );

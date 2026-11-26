@@ -86,6 +86,7 @@ export const roboticsStatusLabels = {
   disconnected: msg("Disconnected"),
   connecting: msg("Connecting"),
   ready: msg("Ready"),
+  unverified: msg("Readiness unverified"),
   degraded: msg("Degraded"),
   blocked: msg("Blocked"),
 };
@@ -93,6 +94,7 @@ export const roboticsStatusLabels = {
 export const robotSessionPhaseLabels = {
   loadingInstructions: msg("Loading setup instructions"),
   settingUp: msg("Setting up"),
+  setupComplete: msg("Setup complete"),
   checkingReadiness: msg("Checking readiness"),
   monitoring: msg("Monitoring readiness"),
   cancelled: msg("Canceled"),

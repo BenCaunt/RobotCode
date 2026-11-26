@@ -340,6 +340,10 @@ contextBridge.exposeInMainWorld("desktopBridge", {
   downloadUpdate: () => ipcRenderer.invoke(IpcChannels.UPDATE_DOWNLOAD_CHANNEL),
   installUpdate: (expectedVersion) =>
     ipcRenderer.invoke(IpcChannels.UPDATE_INSTALL_CHANNEL, expectedVersion),
+  localBuild: {
+    getState: () => ipcRenderer.invoke(IpcChannels.LOCAL_BUILD_GET_STATE_CHANNEL),
+    install: () => ipcRenderer.invoke(IpcChannels.LOCAL_BUILD_INSTALL_CHANNEL),
+  },
   cliCommand: {
     getState: () => ipcRenderer.invoke(IpcChannels.CLI_COMMAND_GET_STATE_CHANNEL),
     install: () => ipcRenderer.invoke(IpcChannels.CLI_COMMAND_INSTALL_CHANNEL),

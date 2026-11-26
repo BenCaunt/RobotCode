@@ -14,7 +14,9 @@ type RootParams = ReactNavigation.RootParamList;
 export type WorkspaceDetail =
   | { readonly name: "Thread"; readonly params: RootParams["Thread"] }
   | { readonly name: "PullRequest"; readonly params: RootParams["PullRequest"] }
-  | { readonly name: "Issue"; readonly params: RootParams["Issue"] };
+  | { readonly name: "Issue"; readonly params: RootParams["Issue"] }
+  | { readonly name: "Robotics"; readonly params: RootParams["Robotics"] }
+  | { readonly name: "Evaluations"; readonly params: RootParams["Evaluations"] };
 
 /** Android opens the reviewers sheet over the pull request in the same step. */
 export type WorkspaceDetailSheet = {
@@ -42,6 +44,8 @@ export function selectWorkspaceDetail(
 
 const IDENTITY = {
   Thread: ["environmentId", "threadId"],
+  Robotics: ["project"],
+  Evaluations: ["project", "result"],
   PullRequest: ["environmentId", "projectId", "repository", "number", "host"],
   Issue: ["environmentId", "projectId", "tracker", "host", "scope", "issueKey"],
 } as const;

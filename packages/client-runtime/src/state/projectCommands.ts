@@ -25,12 +25,18 @@ import type { EnvironmentProject } from "./models.ts";
 import {
   createAtomCommandScheduler,
   createEnvironmentCommand,
+  createEnvironmentQueryAtomFamily,
   createEnvironmentRpcCommand,
   createEnvironmentRpcQueryAtomFamily,
 } from "./runtime.ts";
 import { createProject, deleteProject, updateProject } from "../operations/commands.ts";
 import type { EnvironmentRegistry } from "../connection/registry.ts";
 import { createFileMetadataAtoms } from "./fileMetadata.ts";
+import {
+  evaluationDirectory,
+  evaluationEntry,
+  readEvaluationReport,
+} from "@t3tools/shared/evaluationReport";
 import { resolveWorkspaceFilePath } from "@t3tools/shared/path";
 
 export type {
@@ -127,6 +133,43 @@ export function createProjectEnvironmentAtoms<R, E>(
       JSON.stringify([environmentId, input.projectId]),
   };
   return {
+    evaluationHistory: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:projects:evaluation-history",
+      tag: WS_METHODS.projectsEvaluationHistory,
+      staleTimeMs: 15_000,
+    }),
+    evaluationEntries: createEnvironmentQueryAtomFamily(runtime, {
+      label: "environment-data:projects:evaluations",
+      execute: Effect.fn("Project.listEvaluations")(function* ({ cwd }: { cwd: string }) {
+        const path = resolveWorkspaceFilePath(evaluationDirectory, cwd);
+        const metadata = yield* request(WS_METHODS.filesystemGetMetadata, { paths: [path] });
+        if (!metadata.entries[0]) return { entries: [], truncated: false };
+        return yield* request(WS_METHODS.projectsListEntries, {
+          cwd,
+          directoryPath: evaluationDirectory,
+        });
+      }),
+    }),
+    evaluationReport: createEnvironmentQueryAtomFamily(runtime, {
+      label: "environment-data:projects:evaluation-report",
+      execute: Effect.fn("Project.readEvaluation")(function* ({
+        cwd,
+        id,
+      }: {
+        cwd: string;
+        id: string;
+      }) {
+        if (!evaluationEntry(id)) return null;
+        const file = yield* request(WS_METHODS.projectsReadFile, {
+          cwd,
+          relativePath: evaluationDirectory + "/" + id + ".json",
+          allowMissing: true,
+        });
+        return file.exists === false || file.truncated
+          ? null
+          : readEvaluationReport(id, file.contents);
+      }),
+    }),
     fileMetadata: fileMetadata.metadata,
     fileMetadataThread: fileMetadata.retainThread,
     invalidateFileMetadata: createEnvironmentCommand(runtime, {

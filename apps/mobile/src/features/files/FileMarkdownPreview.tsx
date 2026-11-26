@@ -92,6 +92,7 @@ export function FileMarkdownPreview(props: {
   readonly markdown: string;
   readonly relativePath: string;
   readonly threadId: ThreadId | null;
+  readonly onOpenLink?: (href: string) => boolean;
   readonly onRefresh?: () => Promise<void> | void;
 }) {
   const navigation = useNavigation();
@@ -228,6 +229,7 @@ export function FileMarkdownPreview(props: {
     openMedia(href, true);
   };
   const onLinkPress = (href: string) => {
+    if (props.onOpenLink?.(href)) return;
     if (!openMedia(href)) void tryOpenWebLink(href, "markdown-link");
   };
 

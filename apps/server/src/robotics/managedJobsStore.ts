@@ -78,6 +78,32 @@ export class ManagedJobsStore {
           through INTEGER NOT NULL
         );
       `);
+      db.exec("BEGIN IMMEDIATE");
+      if (db.prepare("PRAGMA user_version").get()?.user_version === 0) {
+        db.exec(`
+          ALTER TABLE jobs ADD COLUMN archived INTEGER NOT NULL DEFAULT 0;
+          UPDATE jobs SET archived = 1
+          WHERE json_extract(record, '$.state') = 'stopped' AND sequence NOT IN (
+            SELECT MAX(sequence) FROM jobs WHERE json_extract(record, '$.state') = 'stopped'
+            GROUP BY project_id, definition_id
+          );
+          CREATE INDEX jobs_by_view ON jobs(project_id, archived, sequence);
+          CREATE INDEX jobs_latest_stopped ON jobs(project_id, definition_id, sequence)
+            WHERE archived = 0 AND json_extract(record, '$.state') = 'stopped';
+
+          CREATE TRIGGER jobs_archive_stopped AFTER UPDATE OF record ON jobs
+          WHEN json_extract(NEW.record, '$.state') = 'stopped'
+            AND json_extract(OLD.record, '$.state') != 'stopped'
+          BEGIN
+            UPDATE jobs SET archived = 1
+            WHERE project_id = NEW.project_id AND definition_id = NEW.definition_id
+              AND archived = 0 AND json_extract(record, '$.state') = 'stopped'
+              AND sequence < NEW.sequence;
+          END;
+          PRAGMA user_version = 1;
+        `);
+      }
+      db.exec("COMMIT");
     } catch (cause) {
       db.close();
       throw cause;
@@ -115,14 +141,24 @@ export class ManagedJobsStore {
 
   list(input: RoboticsJobListInput) {
     const limit = input.limit ?? 50;
+    const filters = { current: "AND archived = 0", archived: "AND archived = 1" };
+    const viewFilter = input.view === undefined ? "" : filters[input.view];
     const rows = this.#db
       .prepare(`
-        SELECT sequence, record FROM jobs WHERE project_id = ? AND sequence < ?
+        SELECT sequence, record FROM jobs WHERE project_id = ? AND sequence < ? ${viewFilter}
         ORDER BY sequence DESC LIMIT ?
       `)
       .all(input.projectId, input.before ?? Number.MAX_SAFE_INTEGER, limit + 1);
     const page = rows.slice(0, limit);
     return {
+      ...(input.view === undefined
+        ? {}
+        : {
+            hasArchived:
+              this.#db
+                .prepare("SELECT 1 FROM jobs WHERE project_id = ? AND archived = 1 LIMIT 1")
+                .get(input.projectId) !== undefined,
+          }),
       jobs: page.map((row) => decodeJob(row.record)),
       nextBefore: rows.length > limit ? Number(page.at(-1)?.sequence) : null,
     };

@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "title": "Go2 field map",
+  "subtitle": "Block walk \u00b7 Localization replay",
+  "initialTime": 310,
+  "rows": [
+    [
+      {
+        "kind": "map",
+        "title": "Atlas track",
+        "source": "pose",
+        "background": "surface"
+      }
+    ],
+    [
+      {
+        "kind": "camera",
+        "title": "Front camera",
+        "source": "front"
+      },
+      {
+        "kind": "plot",
+        "title": "XY allowance",
+        "source": "allowance"
+      }
+    ]
+  ],
+  "sources": "field-map.sources.json"
+}

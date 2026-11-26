@@ -29,6 +29,8 @@ const options = {
     "ThreadFiles",
     "PullRequest",
     "PullRequestReviewers",
+    "Robotics",
+    "Evaluations",
     "Settings",
     "SettingsAppearance",
     "GitOverview",
@@ -92,10 +94,15 @@ describe("selectWorkspaceDetail", () => {
     expect(selected.routes[1]?.key).toBe(thread.routes[1]?.key);
   });
 
-  it("replaces another tab's page and Settings with the selection", () => {
+  it.each([
+    pullRequest,
+    { name: "Robotics", params: { project: "bench:arm" } },
+    { name: "Evaluations", params: { project: "field:arm" } },
+  ] as const)("replaces another tab's page and Settings with $name", (detail) => {
     const settings = push(push(select(home(), threadA), "Settings"), "SettingsAppearance");
-    const selected = select(settings, pullRequest);
-    expect(page(selected)).toEqual({ names: ["Home", "PullRequest"], index: 1 });
+    const selected = select(settings, detail);
+    expect(page(selected)).toEqual({ names: ["Home", detail.name], index: 1 });
+    expect(selected.routes[1]?.params).toEqual(detail.params);
     expect(selected.routes[0]?.key).toBe(settings.routes[0]?.key);
   });
 

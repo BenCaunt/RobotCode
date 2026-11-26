@@ -2,6 +2,7 @@ import { useAtomRefresh, useAtomValue } from "@effect/atom-react";
 import { errorDisplayMessage } from "@t3tools/client-runtime/errors";
 import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
 import {
+  isActiveRobotSession,
   AuthOrchestrationReadScope,
   AuthTerminalOperateScope,
   AuthTerminalReadScope,
@@ -16,6 +17,7 @@ import {
   roboticsStatusLabels,
 } from "@t3tools/client-runtime/state/robotics";
 import { T, useGT, useMessages } from "gt-react";
+import { BotIcon, TerminalIcon } from "lucide-react";
 import { useState } from "react";
 
 import { connectionAtomRuntime } from "../../connection/runtime";
@@ -24,6 +26,7 @@ import { randomUUID } from "../../lib/utils";
 import { useServerConfigs } from "../../state/entities";
 import { useEnvironmentScope } from "../../state/session";
 import { useAtomCommand } from "../../state/use-atom-command";
+import { RobotLiveView } from "../robotics/RobotLiveView";
 import { Button } from "../ui/button";
 import { SettingsSection } from "./settingsLayout";
 
@@ -54,7 +57,75 @@ export function ProjectRoboticsPanel(props: Target & { readonly environmentLabel
   );
 }
 
-function RobotSessions({ environmentId, projectId }: Target) {
+type LiveViewSelection = {
+  readonly viewing: string | undefined;
+  readonly onView: (robotId: string | undefined) => void;
+};
+type OptionalLiveViewSelection = {
+  readonly [Key in keyof LiveViewSelection]?: LiveViewSelection[Key] | undefined;
+};
+
+export function ProjectRoboticsControls({
+  environmentId,
+  projectId,
+  viewing,
+  onView,
+}: Target & OptionalLiveViewSelection) {
+  const readRobots = useEnvironmentScope(environmentId, AuthOrchestrationReadScope);
+  const readJobs = useEnvironmentScope(environmentId, AuthTerminalReadScope);
+  return (
+    <div className="grid items-start gap-4">
+      {readRobots && viewing !== undefined && onView && (
+        <SelectedLiveView
+          environmentId={environmentId}
+          projectId={projectId}
+          viewing={viewing}
+          onView={onView}
+        />
+      )}
+      {readRobots && (
+        <section className="rounded-xl border bg-card p-5">
+          <RobotSessions
+            environmentId={environmentId}
+            projectId={projectId}
+            viewing={viewing}
+            onView={onView}
+          />
+        </section>
+      )}
+      {readJobs && (
+        <section className="rounded-xl border bg-card p-5">
+          <Processes environmentId={environmentId} projectId={projectId} />
+        </section>
+      )}
+    </div>
+  );
+}
+
+function SelectedLiveView({
+  environmentId,
+  projectId,
+  viewing,
+  onView,
+}: Target & LiveViewSelection) {
+  const result = useAtomValue(robotics.robots({ environmentId, input: { projectId } }));
+  const robot =
+    result._tag === "Success" ? result.value.find((entry) => entry.robotId === viewing) : undefined;
+  if (!robot?.liveView) return null;
+  return (
+    <RobotLiveView
+      robot={{ displayName: robot.displayName, liveView: robot.liveView }}
+      onClose={() => onView(undefined)}
+    />
+  );
+}
+
+function RobotSessions({
+  environmentId,
+  projectId,
+  viewing,
+  onView,
+}: Target & OptionalLiveViewSelection) {
   const gt = useGT();
   const m = useMessages();
   const allowed = useEnvironmentScope(environmentId, AuthTerminalOperateScope);
@@ -77,6 +148,7 @@ function RobotSessions({ environmentId, projectId }: Target) {
         input: { projectId, robotId },
       });
       if (response._tag === "Failure") reportError(squashAtomCommandFailure(response));
+      else if (action === "connect" && response.value.liveView) onView?.(robotId);
     } catch (cause) {
       reportError(cause);
     }
@@ -86,7 +158,8 @@ function RobotSessions({ environmentId, projectId }: Target) {
 
   return (
     <div className="w-full space-y-2">
-      <h3 className="text-sm font-medium">
+      <h3 className="flex items-center gap-2 text-sm font-semibold">
+        <BotIcon aria-hidden className="size-4 text-muted-foreground" />
         <T>Robots</T>
       </h3>
       {error && (
@@ -109,13 +182,17 @@ function RobotSessions({ environmentId, projectId }: Target) {
           <T>No robots are configured for this project.</T>
         </p>
       )}
+      {result._tag === "Success" && result.value.length === 0 && (
+        <p className="text-xs text-muted-foreground">
+          {gt("Register robots in {file} on the environment host.", {
+            file: "robotics/registrations.json",
+          })}
+        </p>
+      )}
       {result._tag === "Success" &&
         result.value.map((robot) => {
           const session = robot.session;
-          const canCancel =
-            session?.state === "connecting" ||
-            session?.state === "ready" ||
-            session?.state === "degraded";
+          const canCancel = isActiveRobotSession(session);
           return (
             <div
               key={robot.robotId}
@@ -133,16 +210,28 @@ function RobotSessions({ environmentId, projectId }: Target) {
                   </p>
                 )}
               </div>
-              {allowed && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={pending}
-                  onClick={() => void run(robot.robotId, canCancel ? "cancel" : "connect")}
-                >
-                  {canCancel ? gt("End session") : gt("Connect")}
-                </Button>
-              )}
+              <div className="flex flex-wrap gap-1">
+                {onView && robot.liveView && (
+                  <Button
+                    variant={viewing === robot.robotId ? "secondary" : "outline"}
+                    size="sm"
+                    aria-pressed={viewing === robot.robotId}
+                    onClick={() => onView(viewing === robot.robotId ? undefined : robot.robotId)}
+                  >
+                    <T>Live view</T>
+                  </Button>
+                )}
+                {allowed && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={pending}
+                    onClick={() => void run(robot.robotId, canCancel ? "cancel" : "connect")}
+                  >
+                    {canCancel ? gt("End session") : gt("Connect")}
+                  </Button>
+                )}
+              </div>
             </div>
           );
         })}
@@ -154,10 +243,16 @@ function Processes({ environmentId, projectId }: Target) {
   const gt = useGT();
   const m = useMessages();
   const allowed = useEnvironmentScope(environmentId, AuthTerminalOperateScope);
+  const [archived, setArchived] = useState(false);
   const [before, setBefore] = useState<number | null>(null);
   const jobsAtom = robotics.jobs({
     environmentId,
-    input: { projectId, limit: 25, ...(before === null ? {} : { before }) },
+    input: {
+      projectId,
+      view: archived ? "archived" : "current",
+      limit: 25,
+      ...(before === null ? {} : { before }),
+    },
   });
   const jobs = useAtomValue(jobsAtom);
   const refresh = useAtomRefresh(jobsAtom);
@@ -168,6 +263,13 @@ function Processes({ environmentId, projectId }: Target) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openLogs, setOpenLogs] = useState<string | null>(null);
+
+  function toggleArchive() {
+    setArchived(!archived);
+    setBefore(null);
+    setOpenLogs(null);
+    setError(null);
+  }
 
   async function run(action: "ensure" | "stop" | "restart", id: string) {
     setPending(true);
@@ -212,24 +314,32 @@ function Processes({ environmentId, projectId }: Target) {
   return (
     <div className="w-full space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-medium">
-          <T>Processes</T>
+        <h3 className="flex items-center gap-2 text-sm font-semibold">
+          <TerminalIcon aria-hidden className="size-4 text-muted-foreground" />
+          {archived ? gt("Archived runs") : <T>Processes</T>}
         </h3>
-        <Button variant="ghost" size="sm" onClick={refresh}>
-          <T>Refresh</T>
-        </Button>
+        <div className="flex flex-wrap gap-1">
+          {(archived || (jobs._tag === "Success" && jobs.value.hasArchived)) && (
+            <Button variant="outline" size="sm" onClick={toggleArchive}>
+              {archived ? gt("Current runs") : gt("Archived runs")}
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" onClick={refresh}>
+            <T>Refresh</T>
+          </Button>
+        </div>
       </div>
       {error && (
         <p role="status" className="text-sm text-destructive">
           {error}
         </p>
       )}
-      {definitions._tag === "Failure" && (
+      {!archived && definitions._tag === "Failure" && (
         <p role="status" className="text-sm text-muted-foreground">
           <T>Process definitions are unavailable.</T>
         </p>
       )}
-      {allowed && definitions._tag === "Success" && definitions.value.length > 0 && (
+      {!archived && allowed && definitions._tag === "Success" && definitions.value.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {definitions.value.map((definition) => (
             <Button
@@ -244,6 +354,13 @@ function Processes({ environmentId, projectId }: Target) {
           ))}
         </div>
       )}
+      {!archived && definitions._tag === "Success" && definitions.value.length === 0 && (
+        <p className="text-xs text-muted-foreground">
+          {gt("Define approved processes in {file} on the environment host.", {
+            file: "robotics/jobs.json",
+          })}
+        </p>
+      )}
       {jobs._tag === "Initial" && (
         <p className="text-sm text-muted-foreground">
           <T>Loading processes…</T>
@@ -256,7 +373,7 @@ function Processes({ environmentId, projectId }: Target) {
       )}
       {jobs._tag === "Success" && groups.size === 0 && (
         <p className="text-sm text-muted-foreground">
-          <T>No managed processes for this project.</T>
+          {archived ? gt("No archived runs.") : <T>No managed processes for this project.</T>}
         </p>
       )}
       {[...groups].map(([key, group]) => (
@@ -296,7 +413,7 @@ function Processes({ environmentId, projectId }: Target) {
                   >
                     <T>Logs</T>
                   </Button>
-                  {allowed && (
+                  {!archived && allowed && (
                     <>
                       {job.state === "running" && (
                         <Button
