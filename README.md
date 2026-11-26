@@ -19,9 +19,19 @@ vp run dev
 
 Open the pairing link printed in your terminal. To run the desktop app, use `vp run dev:desktop`. You can also connect from an iPhone or Android device. [Mobile setup](./apps/mobile/README.md)
 
+## Set up a robot
+
+Open your robot’s project and ask your coding agent to set it up in Robot Code. Try this in a project chat.
+
+> Set up my rover in Robot Code. Check what’s already configured for this project and ask me for any connection details you still need.
+
+You can start while the robot is offline. Once it’s registered, you’ll find it under **Robotics** in the project sidebar. When the robot is online, choose **Connect** to run its setup and any readiness checks you’ve configured. [Robot connection guide](./docs/user/robotics-connections.md)
+
 ## Watch a robot live
 
-Open your project, choose **Robotics**, then **Connect**. If the robot has a live view, you can watch it in the web or desktop app.
+If your robot has a live view, it opens when you connect from the web or desktop app. You can also ask your agent to build one.
+
+> Give my robot a live view. Show its 3D model next to a plot of target and measured joint positions.
 
 ![Mini Pupper walking in a simulation, with plots of speed, tilt, and joint motion](./.github/readme/live-view.webp)
 
