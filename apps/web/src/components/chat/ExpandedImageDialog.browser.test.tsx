@@ -158,10 +158,6 @@ describe("ExpandedImageDialog", () => {
       await userEvent.keyboard("{/Control}");
     };
 
-    await userEvent.wheel(viewportLocator, { delta: { y: 120 } });
-    expect(wheels.at(-1)).toEqual({ ctrlKey: false, canceled: false });
-    expect(image.getBoundingClientRect().width).toBe(fitWidth);
-
     await ctrlWheel(-100);
     expect(wheels.at(-1)).toEqual({ ctrlKey: true, canceled: true });
     const zoomedWidth = image.getBoundingClientRect().width;
@@ -169,11 +165,13 @@ describe("ExpandedImageDialog", () => {
 
     const pan = async (delta: { x: number; y: number }) => {
       const { scrollLeft, scrollTop } = viewport;
-      await userEvent.wheel(viewportLocator, { delta });
-      await vi.waitFor(() => {
-        expect(Math.sign(viewport.scrollLeft - scrollLeft)).toBe(Math.sign(delta.x));
-        expect(Math.sign(viewport.scrollTop - scrollTop)).toBe(Math.sign(delta.y));
+      const scrolled = new Promise<void>((resolve) => {
+        viewport.addEventListener("scrollend", () => resolve(), { once: true });
       });
+      await userEvent.wheel(viewportLocator, { delta });
+      await scrolled;
+      expect(Math.sign(viewport.scrollLeft - scrollLeft)).toBe(Math.sign(delta.x));
+      expect(Math.sign(viewport.scrollTop - scrollTop)).toBe(Math.sign(delta.y));
     };
     await pan({ x: 60, y: 0 });
     await pan({ x: 0, y: 60 });

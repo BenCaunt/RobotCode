@@ -18,7 +18,7 @@ import { resolveSidebarFolderDot, resolveThreadLastVisitedAt } from "../Sidebar.
 import { SidebarProjectLinks } from "./SidebarProjectLinks";
 import { ProjectFavicon } from "../ProjectFavicon";
 import { Button } from "../ui/button";
-import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
+import { SharedTooltipTrigger } from "../ui/shared-tooltip";
 
 const FOLDER_DOT_CLASS_NAME = {
   attention: "bg-warning",
@@ -119,26 +119,26 @@ export const SidebarProjectFolderHeader = memo(function SidebarProjectFolderHead
         </button>
         {/* Sits over the count, which hides on hover or focus, and left of the chevron. */}
         <span className="absolute inset-y-0 right-6 flex items-center opacity-0 focus-within:opacity-100 group-hover/project-folder:opacity-100 pointer-coarse:opacity-100">
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  data-sidebar-action-for={rowId}
-                  size="icon-xs"
-                  variant="ghost-muted"
-                  aria-label={gt("New thread in {project}", { project: group.displayName })}
-                  onClick={() => props.onNewThread(group)}
-                />
-              }
-            >
-              <SquarePenIcon aria-hidden />
-            </TooltipTrigger>
-            <TooltipPopup>
-              <T>
-                New thread in <Var>{group.displayName}</Var>
-              </T>
-            </TooltipPopup>
-          </Tooltip>
+          <SharedTooltipTrigger
+            render={
+              <Button
+                data-sidebar-action-for={rowId}
+                size="icon-xs"
+                variant="ghost-muted"
+                aria-label={gt("New thread in {project}", { project: group.displayName })}
+                onClick={() => props.onNewThread(group)}
+              />
+            }
+            label={
+              <>
+                <T>
+                  New thread in <Var>{group.displayName}</Var>
+                </T>
+              </>
+            }
+          >
+            <SquarePenIcon aria-hidden />
+          </SharedTooltipTrigger>
         </span>
       </div>
       {!collapsed &&
@@ -153,16 +153,14 @@ export const SidebarProjectFolderHeader = memo(function SidebarProjectFolderHead
             return (
               <div key={project} className="ms-5">
                 {label && (
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <div className="truncate px-2 pt-1 text-xs text-sidebar-muted-foreground" />
-                      }
-                    >
-                      {label}
-                    </TooltipTrigger>
-                    <TooltipPopup>{label}</TooltipPopup>
-                  </Tooltip>
+                  <SharedTooltipTrigger
+                    render={
+                      <div className="truncate px-2 pt-1 text-xs text-sidebar-muted-foreground" />
+                    }
+                    label={label}
+                  >
+                    {label}
+                  </SharedTooltipTrigger>
                 )}
                 <SidebarProjectLinks
                   project={project}

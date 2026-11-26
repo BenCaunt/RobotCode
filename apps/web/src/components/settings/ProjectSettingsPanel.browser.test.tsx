@@ -420,6 +420,17 @@ describe("project settings permissions", () => {
   });
 
   it("moves a draft on the removed checkout to a remaining checkout of the group", async () => {
+    const initialDrafts = useComposerDraftStore.getState();
+    const persistence = useComposerDraftStore.persist;
+    const originalOptions = persistence.getOptions();
+    using draftsFixture = new DisposableStack();
+    draftsFixture.defer(() => {
+      useComposerDraftStore.setState(initialDrafts, true);
+      persistence.setOptions(originalOptions);
+    });
+    persistence.setOptions({
+      storage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
+    });
     setup();
     const draftId = DraftId.make("draft-handed-off");
     const [primaryProject, remoteProject] = state.projects;

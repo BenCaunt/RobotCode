@@ -1,6 +1,10 @@
 import appCss from "../index.css?inline";
 import type { EnvironmentServerConfig } from "@t3tools/client-runtime/connection";
-import { scopeProjectRef, scopeThreadRef } from "@t3tools/client-runtime/environment";
+import {
+  scopedProjectKey,
+  scopeProjectRef,
+  scopeThreadRef,
+} from "@t3tools/client-runtime/environment";
 import * as shelfHooks from "../state/olderSettledShelf";
 import { createWorkspaceFocusController, workspaceAreaProps } from "../lib/workspaceFocus";
 import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/shell";
@@ -187,6 +191,19 @@ describe("sidebar project folder new thread", () => {
         <Sidebar routeReveal={{ observedKey: null, pendingKey: null }} />
       </SidebarProvider>,
     );
+    const folder = screen.getByTestId("sidebar-project-folder");
+    const toggle = folder.getByRole("button", { name: "acme/demo-repo", exact: true });
+    if (toggle.element().getAttribute("aria-expanded") === "false") {
+      await userEvent.click(toggle);
+    }
+    const links = folder.getByRole("list", { name: /projects\/demo-dev1/ });
+    const projectQuery = new URLSearchParams({ project: scopedProjectKey(dev1ProjectRef) });
+    await expect
+      .element(links.getByRole("link", { name: "Robotics" }))
+      .toHaveAttribute("href", `/robotics?${projectQuery}`);
+    await expect
+      .element(links.getByRole("link", { name: "Evaluations" }))
+      .toHaveAttribute("href", `/evaluations?${projectQuery}`);
     await userEvent.click(screen.getByRole("button", { name: "New thread in acme/demo-repo" }));
 
     expect(startThread).toHaveBeenCalledExactlyOnceWith(dev1ProjectRef);
