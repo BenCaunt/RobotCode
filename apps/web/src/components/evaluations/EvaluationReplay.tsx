@@ -11,6 +11,7 @@ import { useGT } from "gt-react";
 import { CheckIcon, PlayIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useAssetUrlState, useAssetUrlRefresh } from "~/assets/assetUrls";
+import { loadRerunViewer } from "../files/RerunCanvas";
 import { Button } from "../ui/button";
 import { verifiedEvidenceBlob, seekCitation } from "./recordingPlayback";
 
@@ -179,7 +180,7 @@ function ReplayViewer({
         return;
       }
       setStatus("loading");
-      const { WebViewer } = await import("@rerun-io/web-viewer");
+      const { WebViewer } = await loadRerunViewer();
       signal.throwIfAborted();
       const player = new WebViewer();
       instance = player;

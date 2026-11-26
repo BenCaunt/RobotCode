@@ -186,7 +186,7 @@ it.effect("applies registration edits without a restart and ends a removed robot
 
     yield* writeRegistry([registration, added]);
     expect((yield* registry.inspect(input)).session).toBeNull();
-  }).pipe(Effect.provide(RobotRegistry.layer), Effect.provide(configLayer)),
+  }).pipe(Effect.provide(RobotRegistry.layer.pipe(Layer.provideMerge(configLayer)))),
 );
 
 it.effect("rejects a live view that is not a Rerun stream URL", () =>

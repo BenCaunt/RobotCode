@@ -1,7 +1,7 @@
 import type { WebViewer } from "@rerun-io/web-viewer";
 import { type RefObject, useEffect, useRef } from "react";
 
-const loadViewer = () => import("@rerun-io/web-viewer");
+export const loadRerunViewer = () => import("@rerun-io/web-viewer");
 
 export function RerunCanvas(props: {
   readonly sourceUrl: string;
@@ -19,7 +19,7 @@ export function RerunCanvas(props: {
     if (parent === null) return;
     let active = true;
     let stop: (() => void) | undefined;
-    void loadViewer()
+    void loadRerunViewer()
       .then(async ({ WebViewer }) => {
         if (!active) return;
         const viewer = new WebViewer();
