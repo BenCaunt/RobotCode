@@ -173,7 +173,10 @@ describe("sidebar project folder new thread", () => {
       projectId: dev1Copy.id,
       title: "dev1 work",
     });
-    vi.mocked(useQuietThreadShells).mockReturnValue([dev1Thread]);
+    vi.mocked(useQuietThreadShells).mockReturnValue([
+      dev1Thread,
+      ...Array.from({ length: 7 }, (_, index) => threadShell(primaryCopy.id, index)),
+    ]);
     const threadRef = scopeThreadRef(dev1, dev1Thread.id);
     vi.mocked(useThreadRouteTarget).mockReturnValue({ kind: "server", threadRef });
     const dev1ProjectRef = scopeProjectRef(dev1, dev1Copy.id);
@@ -206,6 +209,13 @@ describe("sidebar project folder new thread", () => {
     await expect
       .element(links.getByRole("link", { name: "Evaluations" }))
       .toHaveAttribute("href", `/evaluations?${projectQuery}`);
+    const showMore = screen.getByRole("button", { name: /^Show \d+ more$/ });
+    await userEvent.click(showMore);
+    await expect.element(links.getByRole("link", { name: "Robotics" })).toBeVisible();
+    await userEvent.click(screen.getByRole("button", { name: "Show less", exact: true }));
+    await expect.element(showMore).toBeVisible();
+    await expect.element(links.getByRole("link", { name: "Evaluations" })).toBeVisible();
+
     await userEvent.click(screen.getByRole("button", { name: "New thread in acme/demo-repo" }));
 
     expect(startThread).toHaveBeenCalledExactlyOnceWith(dev1ProjectRef);
