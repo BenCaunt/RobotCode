@@ -2784,8 +2784,6 @@
   "322f9f6712e4a3a7": "{count, plural, one {{count} angesehen} other {{count} angesehen}}",
   "ccd5fc4db08374d7": "{count, plural, one {{count} Testdatei ausgeblendet} other {{count} Testdateien ausgeblendet}}",
   "cb1e1e72fc3d2382": "Testdateien eingeschlossen",
-  "2ab7e87f961a419e": "Diff für {path} anzeigen, {additions} Hinzufügungen, {deletions} Löschungen, angesehen",
-  "e6fef106eeaa76ce": "Diff für {path} anzeigen, {additions} Hinzufügungen, {deletions} Löschungen",
   "a52407bfe5da5df2": "Dateien prüfen",
   "a7764874320578a8": "Testdateien ausblenden",
   "186b7ac75ed4674c": "Review-Dateien filtern",
@@ -5797,5 +5795,10 @@
   "ad208e3e32c85029": "Alle ausblenden",
   "3328503592789bed": "Zen",
   "856812e7e1fc445e": "Tool-Aufrufe im Chat",
-  "8d545d54c0a9e950": "Die Befehle, Bearbeitungen und Suchen ausblenden, die Agenten ausführen. „Erfolgreiche ausblenden“ behält Fehler. „Zen“ zeigt nur endgültige Antworten. Genehmigungen, Fragen und Fehler werden immer angezeigt."
+  "8d545d54c0a9e950": "Die Befehle, Bearbeitungen und Suchen ausblenden, die Agenten ausführen. „Erfolgreiche ausblenden“ behält Fehler. „Zen“ zeigt nur endgültige Antworten. Genehmigungen, Fragen und Fehler werden immer angezeigt.",
+  "71828d9827de3793": "Diff für {path} anzeigen, {additions, plural, one {{additions} Hinzufügung} other {{additions} Hinzufügungen}}, {deletions, plural, one {{deletions} Löschung} other {{deletions} Löschungen}}, angesehen",
+  "9103c6fa7accc088": "Diff für {path} anzeigen, {additions, plural, one {{additions} Hinzufügung} other {{additions} Hinzufügungen}}, {deletions, plural, one {{deletions} Löschung} other {{deletions} Löschungen}}",
+  "f6cf1627f4acc5ef": "Sichtbarkeit des Kommentars",
+  "eb1fd384ad5919dd": "Interne Notiz",
+  "b45f0b467e9406d0": "Dem Kunden antworten"
 }
