@@ -2085,7 +2085,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     projectFolders
       ?.map(
         (folder) =>
-          `${folder.group.projectKey}:${folder.canShowLess}:${folder.threads.map(threadShellKey).join(",")}`,
+          `${folder.group.projectKey}:${folder.collapsed}:${folder.canShowLess}:${folder.threads.map(threadShellKey).join(",")}`,
       )
       .join("\n") ?? "",
     visibleDraftSessionCount,
