@@ -282,7 +282,7 @@ it("switches evaluation workspaces through their project folders", async () => {
     .toHaveAttribute("href", "/robotics?project=bench%3Acart");
 });
 
-it("verifies the recording and pauses Rerun at a linked citation, including after a failed verification", async () => {
+function replayRouter() {
   const root = createRootRoute();
   const layout = createRoute({ getParentRoute: () => root, id: "_chat" });
   const route = createRoute({
@@ -290,13 +290,17 @@ it("verifies the recording and pauses Rerun at a linked citation, including afte
     path: "evaluations",
     component: EvaluationsPage,
   });
-  const router = createRouter({
+  return createRouter({
     routeTree: root.addChildren([layout.addChildren([route])]),
     history: createMemoryHistory({
       initialEntries: ["/evaluations?project=bench%3Acart&result=" + id + "&replay=wheel-slip"],
     }),
   });
-  await page.viewport(1280, 980);
+}
+
+it("verifies the recording and pauses Rerun at a linked citation after retry", async () => {
+  const router = replayRouter();
+  await page.viewport(960, 720);
   const applied = Promise.withResolvers<WebViewer>();
   const setTime = WebViewer.prototype.setTime;
   using seek = vi.spyOn(WebViewer.prototype, "setTime").mockImplementation(async function (
@@ -322,13 +326,53 @@ it("verifies the recording and pauses Rerun at a linked citation, including afte
     const cursor = async () => (await player.getState()).recordings[0]!;
     expect((await cursor()).currentTime).toMatchObject({ timeline: "elapsed", time: 12400000000n });
     expect((await cursor()).playState).toBe("paused");
-    await screen.getByRole("link", { name: /Unrecorded frame/ }).click();
-    await expect.element(screen.getByText("Recording position unavailable.")).toBeVisible();
-    await screen.getByRole("link", { name: "12.4 s", exact: true }).click();
-    await expect.element(screen.getByRole("alert")).not.toBeInTheDocument();
-    await screen.getByRole("link", { name: "Close recording" }).click();
-    expect(router.state.location.search).toEqual({ project: "bench:cart", result: id });
   } finally {
     playback.changed = false;
   }
+});
+
+it("recovers from an unavailable citation and closes the recording", async () => {
+  const router = replayRouter();
+  const storeId = "Recording:rover:ramp";
+  using _start = vi.spyOn(WebViewer.prototype, "start").mockResolvedValue(undefined);
+  using _open = vi.spyOn(WebViewer.prototype, "open").mockResolvedValue({
+    storeIds: [storeId],
+    store_ids: [storeId],
+    loading: [],
+  });
+  using _state = vi.spyOn(WebViewer.prototype, "getState").mockResolvedValue({
+    location: "ramp",
+    recordings: [
+      {
+        storeId,
+        store_id: storeId,
+        location: "ramp",
+        timelines: [
+          {
+            name: "elapsed",
+            timeType: "duration",
+            timeRange: { start: 0n, end: 15_000_000_000n },
+          },
+        ],
+      },
+    ],
+    views: [],
+    loading: [],
+    servers: [],
+  });
+  using _location = vi.spyOn(WebViewer.prototype, "setLocation").mockResolvedValue(undefined);
+  using seek = vi.spyOn(WebViewer.prototype, "setTime").mockResolvedValue(undefined);
+
+  await router.load();
+  // The evaluations route reads the citation from its own router search.
+  await using screen = await render(<RouterProvider router={router} />, { router: false });
+  await vi.waitFor(() => expect(seek).toHaveBeenCalledTimes(1));
+  await screen.getByRole("link", { name: /Unrecorded frame/ }).click();
+  await expect.element(screen.getByText("Recording position unavailable.")).toBeVisible();
+  expect(seek).toHaveBeenCalledTimes(1);
+  await screen.getByRole("link", { name: "12.4 s", exact: true }).click();
+  await expect.element(screen.getByRole("alert")).not.toBeInTheDocument();
+  await vi.waitFor(() => expect(seek).toHaveBeenCalledTimes(2));
+  await screen.getByRole("link", { name: "Close recording" }).click();
+  expect(router.state.location.search).toEqual({ project: "bench:cart", result: id });
 });
