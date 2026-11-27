@@ -400,6 +400,7 @@ describe("environment theme", () => {
               path.join(target, "nightfall.json"),
               encodeThemeFile(NIGHTFALL_THEME),
             );
+            yield* currentThemes;
             assert.deepEqual(yield* Queue.take(snapshots), []);
             yield* fs.rename(previous, active);
             yield* Deferred.succeed(resumeProbes, undefined);
@@ -476,6 +477,8 @@ describe("environment theme", () => {
               path.join(previous, "shared", "themes", "nightfall.json"),
               encodeThemeFile(NIGHTFALL_THEME),
             );
+            // Some systems report no watch event when an ancestor moves.
+            yield* currentThemes;
             assert.deepEqual(yield* Queue.take(snapshots), []);
             yield* fs.rename(previous, active);
             yield* Deferred.succeed(resumeProbes, undefined);
