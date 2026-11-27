@@ -193,6 +193,10 @@ export const assetFileResponse = Effect.fn("assetFileResponse")(function* (
     asset.path,
     isRecording ? { ...asset, mimeType: "application/octet-stream" } : asset,
   );
+  if (asset.renderIntent === "file-preview") {
+    // The signed URL stays the same while the workspace file changes, so a reload must revalidate.
+    headers["Cache-Control"] = "private, no-cache";
+  }
   if (
     asset.renderIntent === "mcp-app" &&
     !asset.download &&
